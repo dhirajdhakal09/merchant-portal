@@ -1,7 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { computed, inject, Service, signal } from '@angular/core';
 import { Router } from '@angular/router';
-import { catchError, map, Observable, of, tap, throwError } from 'rxjs';
+import { catchError, finalize, map, Observable, of, shareReplay, tap, throwError } from 'rxjs';
 import type { AuthResponse, RefreshResponse, Role, User } from '../models/user.model';
 
 /*
@@ -33,6 +33,8 @@ export class AuthService {
   private readonly _currentUser = signal<User | null>(null);
   private readonly _accessToken = signal<string | null>(null);
 
+  private refreshInFlight$: Observable<string> | null = null;
+
   /** The signed-in user, or null. Read-only outside this service. */
   readonly currentUser = this._currentUser.asReadonly();
   readonly isAuthenticated = computed(() => this._currentUser() !== null);
@@ -45,7 +47,7 @@ export class AuthService {
         this._accessToken.set(res.accessToken);
         this._currentUser.set(res.user);
       }),
-      map((res) => res.user),
+      map(res => res.user)
     );
   }
 
@@ -53,18 +55,18 @@ export class AuthService {
    * Exchanges the stored refresh token for a new access token and emits it.
    * If the refresh fails (missing, invalid or expired token), the user is logged out.
    */
-  refreshToken(): Observable<string> {
-    return this.requestRefresh().pipe(
-      catchError((err: unknown) => {
-        this.logout();
-        return throwError(() => err);
-      }),
-    );
-  }
+  // refreshToken(): Observable<string> {
+  //   return this.requestRefresh().pipe(
+  //     catchError((err: unknown) => {
+  //       this.logout();
+  //       return throwError(() => err);
+  //     })
+  //   );
+  // }
 
   logout(): void {
     this.clearSession();
-    void this.router.navigate(['/login']);
+    void this.router.navigate([ '/login' ]);
   }
 
   /** True if the current user has any of the given roles. */
@@ -92,7 +94,7 @@ export class AuthService {
       catchError(() => {
         this.clearSession();
         return of(undefined);
-      }),
+      })
     );
   }
 
@@ -107,7 +109,7 @@ export class AuthService {
         this._accessToken.set(res.accessToken);
         this._currentUser.set(res.user);
       }),
-      map((res) => res.accessToken),
+      map(res => res.accessToken)
     );
   }
 
@@ -115,5 +117,26 @@ export class AuthService {
     sessionStorage.removeItem(REFRESH_TOKEN_KEY);
     this._accessToken.set(null);
     this._currentUser.set(null);
+  }
+
+  refreshAccessToken(): Observable<string> {
+    if (!this.refreshInFlight$) {
+      const refreshToken = sessionStorage.getItem('refreshToken');
+
+      this.refreshInFlight$ = this.http.post<AuthResponse>('/api/auth/refresh', { refreshToken }).pipe(
+        map((res) => {
+          this._accessToken.set(res.accessToken);
+          this._currentUser.set(res.user);
+          return res.accessToken;
+        }),
+        catchError((err) => {
+          this.logout(); // refresh failed → session is over
+          return throwError(() => err);
+        }),
+        finalize(() => (this.refreshInFlight$ = null)),
+        shareReplay(1)
+      );
+    }
+    return this.refreshInFlight$;
   }
 }
