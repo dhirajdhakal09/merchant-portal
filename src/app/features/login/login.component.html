@@ -1,4 +1,96 @@
-<section class="container py-5">
-  <h1 class="h3">Login</h1>
-  <p class="text-body-secondary">Coming soon.</p>
-</section>
+<main class="container py-5">
+  <div class="row justify-content-center">
+    <div class="col-12 col-sm-10 col-md-7 col-lg-5">
+      <div class="card shadow-sm">
+        <div class="card-body p-4">
+          <h1 class="h3 mb-1">Merchant Portal</h1>
+          <p class="text-body-secondary mb-4">Sign in to continue</p>
+
+          @if (errorMessage(); as message) {
+            <div class="alert alert-danger" role="alert">{{ message }}</div>
+          }
+
+          <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
+            <div class="mb-3">
+              <label for="email" class="form-label">Email</label>
+              <input
+                id="email"
+                type="email"
+                class="form-control"
+                formControlName="email"
+                autocomplete="username"
+                [class.is-invalid]="showErrors(form.controls.email)"
+                [attr.aria-invalid]="showErrors(form.controls.email)"
+                [attr.aria-describedby]="showErrors(form.controls.email) ? 'email-error' : null"
+              />
+              @if (showErrors(form.controls.email)) {
+                <div id="email-error" class="invalid-feedback">
+                  @if (form.controls.email.hasError('required')) {
+                    Email is required.
+                  } @else if (form.controls.email.hasError('email')) {
+                    Enter a valid email address.
+                  }
+                </div>
+              }
+            </div>
+
+            <div class="mb-4">
+              <label for="password" class="form-label">Password</label>
+              <input
+                id="password"
+                type="password"
+                class="form-control"
+                formControlName="password"
+                autocomplete="current-password"
+                [class.is-invalid]="showErrors(form.controls.password)"
+                [attr.aria-invalid]="showErrors(form.controls.password)"
+                [attr.aria-describedby]="
+                  showErrors(form.controls.password) ? 'password-error' : null
+                "
+              />
+              @if (showErrors(form.controls.password)) {
+                <div id="password-error" class="invalid-feedback">Password is required.</div>
+              }
+            </div>
+
+            <button type="submit" class="btn btn-primary w-100" [disabled]="loading()">
+              @if (loading()) {
+                <span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>
+                Signing in…
+              } @else {
+                Sign in
+              }
+            </button>
+          </form>
+        </div>
+      </div>
+
+      <section class="card mt-4" aria-labelledby="demo-accounts-heading">
+        <div class="card-body">
+          <h2 id="demo-accounts-heading" class="h6">Demo accounts</h2>
+          <p class="small text-body-secondary mb-2">
+            Fake users for testing. Password for all: <code>{{ demoPassword }}</code>
+          </p>
+          <table class="table table-sm mb-0 small">
+            <thead>
+              <tr>
+                <th scope="col">Email</th>
+                <th scope="col">Role</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (account of demoAccounts; track account.email) {
+                <tr>
+                  <td>{{ account.email }}</td>
+                  <td>
+                    <span class="badge text-bg-secondary">{{ account.role }}</span>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  </div>
+</main>

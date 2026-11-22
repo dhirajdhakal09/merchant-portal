@@ -1,5 +1,8 @@
 import { Routes } from '@angular/router';
+import { authGuard } from './core/auth/auth.guard';
+import { roleGuard } from './core/auth/role.guard';
 import { ShellComponent } from './core/layout/shell/shell.component';
+import type { Role } from './core/models/user.model';
 
 export const routes: Routes = [
   // Public route, rendered without the app shell (no header).
@@ -11,6 +14,7 @@ export const routes: Routes = [
   {
     path: '',
     component: ShellComponent,
+    canActivate: [authGuard],
     children: [
       { path: '', pathMatch: 'full', redirectTo: 'dashboard' },
       {
@@ -19,6 +23,8 @@ export const routes: Routes = [
       },
       {
         path: 'applications/new',
+        canActivate: [roleGuard],
+        data: { roles: ['SALES'] satisfies Role[] },
         loadComponent: () => import('./features/application-wizard/application-wizard.component'),
       },
       {

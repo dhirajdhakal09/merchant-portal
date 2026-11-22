@@ -1,6 +1,41 @@
-<header class="navbar navbar-dark bg-dark">
-  <div class="container">
-    <span class="navbar-brand mb-0 h1">Merchant Portal</span>
+<header class="navbar navbar-expand navbar-dark bg-dark">
+  <div class="container flex-wrap gap-2">
+    <a class="navbar-brand" routerLink="/dashboard">Merchant Portal</a>
+
+    <nav aria-label="Main" class="me-auto">
+      <ul class="navbar-nav">
+        <li class="nav-item">
+          <a
+            class="nav-link"
+            routerLink="/dashboard"
+            routerLinkActive="active"
+            ariaCurrentWhenActive="page"
+            >Dashboard</a
+          >
+        </li>
+        <li class="nav-item" *appHasRole="['SALES']">
+          <a
+            class="nav-link"
+            routerLink="/applications/new"
+            routerLinkActive="active"
+            ariaCurrentWhenActive="page"
+            >New application</a
+          >
+        </li>
+      </ul>
+    </nav>
+
+    @if (auth.currentUser(); as user) {
+      <div class="d-flex align-items-center gap-3 text-light">
+        <span>
+          {{ user.name }}
+          <span class="badge text-bg-light ms-1">{{ user.role }}</span>
+        </span>
+        <button type="button" class="btn btn-outline-light btn-sm" (click)="logout()">
+          Log out
+        </button>
+      </div>
+    }
   </div>
 </header>
 
