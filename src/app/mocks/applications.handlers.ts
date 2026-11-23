@@ -9,7 +9,8 @@ import { validateApplication } from '../shared/validators/merchant-rules';
 import { canViewApplication } from './application-access';
 import { emptyDetails, mergeDraft, nextApplicationId } from './application-drafts';
 import { db } from './data';
-import { readJson } from './http-utils';
+import { errorResponse, readJson } from './http-utils';
+import { maskApplication } from './masking';
 import { requireAuth } from './require-auth';
 
 /** Artificial latency so loading states are visible in the UI. */
@@ -29,9 +30,6 @@ function positiveInt(value: string | null, fallback: number, max = Number.MAX_SA
   const n = Number(value);
   return Number.isInteger(n) && n >= 1 ? Math.min(n, max) : fallback;
 }
-
-const errorResponse = (status: number, message: string) =>
-  HttpResponse.json({ message }, { status });
 
 /**
  * Shared checks for changing a draft (save and submit), in order:
@@ -97,7 +95,8 @@ export const applicationHandlers = [
     const start = (page - 1) * pageSize;
 
     return HttpResponse.json<PaginatedResponse<MerchantApplication>>({
-      items: results.slice(start, start + pageSize),
+      // Masked copies: full sensitive values never leave the server in a list.
+      items: results.slice(start, start + pageSize).map(maskApplication),
       total: results.length,
       page,
       pageSize,
@@ -120,6 +119,19 @@ export const applicationHandlers = [
       );
     }
 
+    // Masked for everyone, including ADMIN: full values only via the audited reveal endpoint.
+    return HttpResponse.json<MerchantApplication>(maskApplication(app));
+  }),
+
+  /**
+   * The creator's own DRAFT with FULL values, for the wizard's edit mode. Unsubmitted input
+   * the user typed themselves; editing it with masked values would overwrite the real data.
+   * Same checks as saving: SALES, creator only, DRAFT only (409 once submitted).
+   */
+  http.get('/api/applications/:id/draft', async ({ request, params }) => {
+    await delay(LATENCY_MS);
+    const app = findOwnDraft(request, params['id']);
+    if (app instanceof Response) return app;
     return HttpResponse.json<MerchantApplication>(app);
   }),
 
@@ -177,6 +189,7 @@ export const applicationHandlers = [
     }
 
     Object.assign(app, { status: 'SUBMITTED', updatedAt: new Date().toISOString() });
-    return HttpResponse.json<MerchantApplication>(app);
+    // No longer an editable draft: from here on, sensitive fields are masked like everywhere else.
+    return HttpResponse.json<MerchantApplication>(maskApplication(app));
   }),
 ];

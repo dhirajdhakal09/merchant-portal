@@ -1,2 +1,140 @@
-<h1 class="h3">New merchant application</h1>
-<p class="text-body-secondary">Coming soon.</p>
+<div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+  <h1 class="h3 mb-0">
+    @if (id()) {
+      Edit application
+    } @else {
+      New merchant application
+    }
+  </h1>
+
+  <!-- Auto-save status. Always in the DOM so screen readers announce changes politely. -->
+  <div class="save-status small" aria-live="polite">
+    @switch (autosave.saveStatus()) {
+      @case ('saving') {
+        <span class="text-body-secondary">
+          <span class="spinner-border spinner-border-sm me-1" aria-hidden="true"></span>
+          Saving…
+        </span>
+      }
+      @case ('saved') {
+        <span class="text-success">Saved at {{ autosave.lastSavedAt() | date: 'HH:mm' }}</span>
+      }
+      @case ('error') {
+        <span class="d-inline-flex flex-wrap align-items-center gap-2 text-danger">
+          Couldn't save. Your changes are kept.
+          <button type="button" class="btn btn-sm btn-outline-danger" (click)="retrySave()">
+            Save now
+          </button>
+        </span>
+      }
+    }
+  </div>
+</div>
+
+@if (id() && existing.isLoading()) {
+  <div aria-live="polite">
+    <app-load-state state="loading" message="Loading application" />
+  </div>
+} @else if (notEditable()) {
+  <!-- Checked before the generic error: a 409 means "no longer a draft", not "failed" -->
+  <div class="alert alert-info">
+    This application has already been submitted and can no longer be edited.
+    <a class="alert-link" [routerLink]="['/applications', id()]">View application</a>
+  </div>
+} @else if (id() && existing.error()) {
+  <app-load-state
+    state="error"
+    message="We couldn't load this application. It may not exist, or you may not have access."
+    (retry)="existing.reload()"
+  />
+} @else {
+  <!-- Step indicator -->
+  <nav aria-label="Application progress" class="mb-4">
+    <ol class="wizard-steps">
+      @for (step of steps; track step.key; let i = $index) {
+        <li
+          class="wizard-step"
+          [class.is-current]="i === currentStep()"
+          [class.is-complete]="i < currentStep()"
+        >
+          @if (i < currentStep()) {
+            <button type="button" class="wizard-step-link" (click)="goToStep(i)">
+              <span class="wizard-step-marker" aria-hidden="true">✓</span>
+              <span class="wizard-step-label">{{ step.label }}</span>
+              <span class="visually-hidden">(completed, go back to this step)</span>
+            </button>
+          } @else {
+            <span
+              class="wizard-step-link"
+              [attr.aria-current]="i === currentStep() ? 'step' : null"
+            >
+              <span class="wizard-step-marker" aria-hidden="true">{{ i + 1 }}</span>
+              <span class="wizard-step-label">{{ step.label }}</span>
+            </span>
+          }
+        </li>
+      }
+    </ol>
+    <p class="small text-body-secondary mb-0 mt-2 d-md-none">
+      Step {{ currentStep() + 1 }} of {{ steps.length }}: {{ steps[currentStep()].label }}
+    </p>
+  </nav>
+
+  <form [formGroup]="form" (ngSubmit)="onFormSubmit()" novalidate>
+    <div class="card">
+      <div class="card-body">
+        <h2 #stepHeading class="h5 mb-3 step-heading" tabindex="-1">
+          {{ steps[currentStep()].label }}
+        </h2>
+
+        @switch (currentStep()) {
+          @case (0) {
+            <app-business-step [group]="form.controls.business" />
+          }
+          @case (1) {
+            <app-owner-step [group]="form.controls.owner" />
+          }
+          @case (2) {
+            <app-bank-step [group]="form.controls.bank" />
+          }
+          @case (3) {
+            <app-review-step [form]="form" (edit)="goToStep($event)" />
+          }
+        }
+      </div>
+    </div>
+
+    @if (submitError(); as message) {
+      <div class="alert alert-danger mt-3 mb-0" role="alert">{{ message }}</div>
+    }
+
+    <div class="d-flex flex-column-reverse flex-sm-row justify-content-between gap-2 mt-3">
+      @if (currentStep() > 0) {
+        <button
+          type="button"
+          class="btn btn-outline-secondary"
+          [disabled]="submitting()"
+          (click)="back()"
+        >
+          Back
+        </button>
+      } @else {
+        <span class="d-none d-sm-block"></span>
+      }
+
+      @if (currentStep() < reviewStep) {
+        <!-- A submit button, so pressing Enter in a field moves to the next step (see onFormSubmit) -->
+        <button type="submit" class="btn btn-primary">Next</button>
+      } @else {
+        <button type="submit" class="btn btn-success" [disabled]="submitting()">
+          @if (submitting()) {
+            <span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>
+            Submitting…
+          } @else {
+            Submit application
+          }
+        </button>
+      }
+    </div>
+  </form>
+}

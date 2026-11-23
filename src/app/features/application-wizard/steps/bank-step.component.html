@@ -1,0 +1,109 @@
+@let c = group().controls;
+<div class="row g-3" [formGroup]="group()">
+  <div class="col-12 col-md-6">
+    <label for="bank-accountHolderName" class="form-label">Account holder name</label>
+    <input
+      id="bank-accountHolderName"
+      class="form-control"
+      formControlName="accountHolderName"
+      [class.is-invalid]="showError(c.accountHolderName)"
+      [attr.aria-invalid]="showError(c.accountHolderName) || null"
+      [attr.aria-describedby]="
+        showError(c.accountHolderName) ? 'bank-accountHolderName-error' : null
+      "
+    />
+    @if (showError(c.accountHolderName)) {
+      <div id="bank-accountHolderName-error" class="invalid-feedback">
+        {{ message(c.accountHolderName.errors, 'Account holder name') }}
+      </div>
+    }
+  </div>
+
+  <div class="col-12 col-md-6">
+    <label for="bank-bankName" class="form-label">Bank name</label>
+    <input
+      id="bank-bankName"
+      class="form-control"
+      formControlName="bankName"
+      [class.is-invalid]="showError(c.bankName)"
+      [attr.aria-invalid]="showError(c.bankName) || null"
+      [attr.aria-describedby]="showError(c.bankName) ? 'bank-bankName-error' : null"
+    />
+    @if (showError(c.bankName)) {
+      <div id="bank-bankName-error" class="invalid-feedback">
+        {{ message(c.bankName.errors, 'Bank name') }}
+      </div>
+    }
+  </div>
+
+  <div class="col-12 col-md-6">
+    <label for="bank-accountNumber" class="form-label">Account number</label>
+    <input
+      id="bank-accountNumber"
+      class="form-control"
+      formControlName="accountNumber"
+      inputmode="numeric"
+      autocomplete="off"
+      [class.is-invalid]="showError(c.accountNumber)"
+      [attr.aria-invalid]="showError(c.accountNumber) || null"
+      [attr.aria-describedby]="
+        'bank-accountNumber-hint' + (showError(c.accountNumber) ? ' bank-accountNumber-error' : '')
+      "
+    />
+    <div id="bank-accountNumber-hint" class="form-text">6–20 digits, no spaces.</div>
+    @if (showError(c.accountNumber)) {
+      <div id="bank-accountNumber-error" class="invalid-feedback d-block">
+        {{ message(c.accountNumber.errors, 'Account number') }}
+      </div>
+    }
+  </div>
+
+  <div class="col-12 col-md-6">
+    <label for="bank-confirmAccountNumber" class="form-label">Confirm account number</label>
+    <input
+      id="bank-confirmAccountNumber"
+      class="form-control"
+      formControlName="confirmAccountNumber"
+      inputmode="numeric"
+      autocomplete="off"
+      [class.is-invalid]="showError(c.confirmAccountNumber) || showMismatch()"
+      [attr.aria-invalid]="showError(c.confirmAccountNumber) || showMismatch() || null"
+      [attr.aria-describedby]="
+        showError(c.confirmAccountNumber) || showMismatch()
+          ? 'bank-confirmAccountNumber-error'
+          : null
+      "
+    />
+    @if (showError(c.confirmAccountNumber)) {
+      <div id="bank-confirmAccountNumber-error" class="invalid-feedback">
+        {{ message(c.confirmAccountNumber.errors, 'Account number confirmation') }}
+      </div>
+    } @else if (showMismatch()) {
+      <div id="bank-confirmAccountNumber-error" class="invalid-feedback">
+        Account numbers don't match.
+      </div>
+    }
+  </div>
+
+  <div class="col-12 col-md-6">
+    <label for="bank-routingNumber" class="form-label">Routing number</label>
+    <input
+      id="bank-routingNumber"
+      class="form-control"
+      formControlName="routingNumber"
+      inputmode="numeric"
+      autocomplete="off"
+      [class.is-invalid]="showError(c.routingNumber)"
+      [attr.aria-invalid]="showError(c.routingNumber) || null"
+      [attr.aria-describedby]="
+        'bank-routingNumber-hint' + (showError(c.routingNumber) ? ' bank-routingNumber-error' : '')
+      "
+    />
+    <div id="bank-routingNumber-hint" class="form-text">Exactly 9 digits.</div>
+    @if (showError(c.routingNumber)) {
+      <div id="bank-routingNumber-error" class="invalid-feedback d-block">
+        {{ message(c.routingNumber.errors, 'Routing number') }}
+      </div>
+    }
+  </div>
+</div>

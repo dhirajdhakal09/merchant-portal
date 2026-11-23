@@ -1,7 +1,12 @@
-import { provideHttpClient } from '@angular/common/http';
+import { HttpErrorResponse, provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
-import type { MerchantApplication, PaginatedResponse } from '../models/application.model';
+import type {
+  ApplicationDraftPayload,
+  MerchantApplication,
+  PaginatedResponse,
+  ValidationErrorResponse,
+} from '../models/application.model';
 import { ApplicationApiService } from './application-api.service';
 
 describe('ApplicationApiService', () => {
@@ -94,6 +99,123 @@ describe('ApplicationApiService', () => {
 
       const req = httpMock.expectOne('/api/applications/..%2Fusers%3Fx%3D1');
       req.flush({});
+    });
+  });
+
+  describe('getDraft', () => {
+    it('sends GET /api/applications/:id/draft and emits the draft', () => {
+      const draft = { id: 'app-046', status: 'DRAFT' } as MerchantApplication;
+      let received: unknown;
+      service.getDraft('app-046').subscribe((res) => (received = res));
+
+      const req = httpMock.expectOne('/api/applications/app-046/draft');
+      expect(req.request.method).toBe('GET');
+      req.flush(draft);
+
+      expect(received).toEqual(draft);
+    });
+
+    it('URL-encodes the id', () => {
+      service.getDraft('a/b').subscribe();
+
+      httpMock.expectOne('/api/applications/a%2Fb/draft').flush({});
+    });
+  });
+
+  describe('createDraft', () => {
+    it('POSTs the partial data to /api/applications and emits the created draft', () => {
+      const data: ApplicationDraftPayload = { business: { legalName: 'Test Momo House' } };
+      const created = { id: 'app-046', status: 'DRAFT' } as MerchantApplication;
+      let received: unknown;
+      service.createDraft(data).subscribe((res) => (received = res));
+
+      const req = httpMock.expectOne('/api/applications');
+      expect(req.request.method).toBe('POST');
+      expect(req.request.body).toEqual(data);
+      req.flush(created, { status: 201, statusText: 'Created' });
+
+      expect(received).toEqual(created);
+    });
+
+    it('accepts an empty payload', () => {
+      service.createDraft({}).subscribe();
+
+      const req = httpMock.expectOne('/api/applications');
+      expect(req.request.body).toEqual({});
+      req.flush({}, { status: 201, statusText: 'Created' });
+    });
+  });
+
+  describe('saveDraft', () => {
+    it('PUTs the partial data to /api/applications/:id/draft and emits the saved application', () => {
+      const data: ApplicationDraftPayload = { owner: { email: 'tara@example.com' } };
+      const saved = { id: 'app-046', status: 'DRAFT' } as MerchantApplication;
+      let received: unknown;
+      service.saveDraft('app-046', data).subscribe((res) => (received = res));
+
+      const req = httpMock.expectOne('/api/applications/app-046/draft');
+      expect(req.request.method).toBe('PUT');
+      expect(req.request.body).toEqual(data);
+      req.flush(saved);
+
+      expect(received).toEqual(saved);
+    });
+
+    it('URL-encodes the id', () => {
+      service.saveDraft('a/b', {}).subscribe();
+
+      httpMock.expectOne('/api/applications/a%2Fb/draft').flush({});
+    });
+
+    it('passes server errors (e.g. 409) to the caller unchanged', () => {
+      let error: HttpErrorResponse | undefined;
+      service.saveDraft('app-002', {}).subscribe({ error: (e) => (error = e) });
+
+      httpMock
+        .expectOne('/api/applications/app-002/draft')
+        .flush(
+          { message: 'Application is SUBMITTED and can no longer be edited' },
+          { status: 409, statusText: 'Conflict' },
+        );
+
+      expect(error?.status).toBe(409);
+    });
+  });
+
+  describe('submitApplication', () => {
+    it('POSTs to /api/applications/:id/submit with no body and emits the submitted application', () => {
+      const submitted = { id: 'app-046', status: 'SUBMITTED' } as MerchantApplication;
+      let received: unknown;
+      service.submitApplication('app-046').subscribe((res) => (received = res));
+
+      const req = httpMock.expectOne('/api/applications/app-046/submit');
+      expect(req.request.method).toBe('POST');
+      expect(req.request.body).toBeNull();
+      req.flush(submitted);
+
+      expect(received).toEqual(submitted);
+    });
+
+    it('URL-encodes the id', () => {
+      service.submitApplication('a?b').subscribe();
+
+      httpMock.expectOne('/api/applications/a%3Fb/submit').flush({});
+    });
+
+    it('passes a 422 with its field errors to the caller', () => {
+      const body: ValidationErrorResponse = {
+        message: 'Some fields are missing or invalid',
+        errors: [{ field: 'owner.email', message: 'Email is required.' }],
+      };
+      let error: HttpErrorResponse | undefined;
+      service.submitApplication('app-046').subscribe({ error: (e) => (error = e) });
+
+      httpMock
+        .expectOne('/api/applications/app-046/submit')
+        .flush(body, { status: 422, statusText: 'Unprocessable Entity' });
+
+      expect(error?.status).toBe(422);
+      expect(error?.error).toEqual(body); // the field list is available to the wizard
     });
   });
 });

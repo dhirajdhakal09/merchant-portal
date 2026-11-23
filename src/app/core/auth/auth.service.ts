@@ -47,7 +47,7 @@ export class AuthService {
         this._accessToken.set(res.accessToken);
         this._currentUser.set(res.user);
       }),
-      map(res => res.user)
+      map((res) => res.user),
     );
   }
 
@@ -66,7 +66,7 @@ export class AuthService {
 
   logout(): void {
     this.clearSession();
-    void this.router.navigate([ '/login' ]);
+    void this.router.navigate(['/login']);
   }
 
   /** True if the current user has any of the given roles. */
@@ -94,7 +94,7 @@ export class AuthService {
       catchError(() => {
         this.clearSession();
         return of(undefined);
-      })
+      }),
     );
   }
 
@@ -109,7 +109,7 @@ export class AuthService {
         this._accessToken.set(res.accessToken);
         this._currentUser.set(res.user);
       }),
-      map(res => res.accessToken)
+      map((res) => res.accessToken),
     );
   }
 
@@ -123,19 +123,21 @@ export class AuthService {
     if (!this.refreshInFlight$) {
       const refreshToken = sessionStorage.getItem(REFRESH_TOKEN_KEY);
 
-      this.refreshInFlight$ = this.http.post<AuthResponse>('/api/auth/refresh', { refreshToken }).pipe(
-        map((res) => {
-          this._accessToken.set(res.accessToken);
-          this._currentUser.set(res.user);
-          return res.accessToken;
-        }),
-        catchError((err) => {
-          this.logout(); // refresh failed → session is over
-          return throwError(() => err);
-        }),
-        finalize(() => (this.refreshInFlight$ = null)),
-        shareReplay(1)
-      );
+      this.refreshInFlight$ = this.http
+        .post<AuthResponse>('/api/auth/refresh', { refreshToken })
+        .pipe(
+          map((res) => {
+            this._accessToken.set(res.accessToken);
+            this._currentUser.set(res.user);
+            return res.accessToken;
+          }),
+          catchError((err) => {
+            this.logout(); // refresh failed → session is over
+            return throwError(() => err);
+          }),
+          finalize(() => (this.refreshInFlight$ = null)),
+          shareReplay(1),
+        );
     }
     return this.refreshInFlight$;
   }

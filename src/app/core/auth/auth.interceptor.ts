@@ -26,8 +26,10 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
       }
 
       // Refresh (or join the refresh already running), then retry once
-      return auth.refreshAccessToken().pipe(switchMap(newToken => next(withToken(req, newToken))));
-    })
+      return auth
+        .refreshAccessToken()
+        .pipe(switchMap((newToken) => next(withToken(req, newToken))));
+    }),
   );
 };
 

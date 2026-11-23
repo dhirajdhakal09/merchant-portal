@@ -2,6 +2,7 @@ import type {
   ApplicationStatus,
   MerchantApplication,
   RiskDecision,
+  SensitiveField,
 } from '../core/models/application.model';
 import type { User } from '../core/models/user.model';
 
@@ -220,11 +221,28 @@ function buildApplication(i: number): MerchantApplication {
 }
 
 /**
+ * One reveal of a sensitive field: who saw what, on which application, and when.
+ * Server-side only (not exposed by any endpoint yet).
+ */
+export interface AuditEntry {
+  userId: string;
+  field: SensitiveField;
+  applicationId: string;
+  /** ISO date-time string. */
+  at: string;
+}
+
+/**
  * In-memory "database". Lives only in the browser tab and resets on page reload.
  */
-export const db: { users: MockUser[]; applications: MerchantApplication[] } = {
+export const db: {
+  users: MockUser[];
+  applications: MerchantApplication[];
+  auditLog: AuditEntry[];
+} = {
   users,
   applications: Array.from({ length: APPLICATION_COUNT }, (_, i) => buildApplication(i)),
+  auditLog: [],
 };
 
 /** Strips server-only fields (the password) before a user leaves the "server". */

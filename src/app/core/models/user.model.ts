@@ -9,6 +9,12 @@ export interface User {
   role: Role;
 }
 
+/** Minimal user info for pickers, e.g. GET /api/users?role=REVIEWER (no email). */
+export interface UserSummary {
+  id: string;
+  name: string;
+}
+
 /** Response from login and token refresh. */
 export interface AuthResponse {
   /** Short-lived token sent as `Authorization: Bearer <token>` on API calls. */

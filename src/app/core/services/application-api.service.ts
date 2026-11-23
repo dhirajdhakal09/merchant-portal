@@ -2,6 +2,7 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { inject, Service } from '@angular/core';
 import { Observable } from 'rxjs';
 import type {
+  ApplicationDraftPayload,
   ApplicationQuery,
   MerchantApplication,
   PaginatedResponse,
@@ -34,8 +35,43 @@ export class ApplicationApiService {
     return this.http.get<PaginatedResponse<MerchantApplication>>(BASE_URL, { params });
   }
 
+  /** Any viewable application. Sensitive fields come back MASKED. */
   getApplication(id: string): Observable<MerchantApplication> {
-    // Encode the id so a value like "../x" or "a?b" can't change the request path.
-    return this.http.get<MerchantApplication>(`${BASE_URL}/${encodeURIComponent(id)}`);
+    return this.http.get<MerchantApplication>(itemUrl(id));
   }
+
+  /**
+   * The creator's own DRAFT with full values, for editing in the wizard.
+   * Errors: 403 not the creator, 409 no longer a draft.
+   */
+  getDraft(id: string): Observable<MerchantApplication> {
+    return this.http.get<MerchantApplication>(`${itemUrl(id)}/draft`);
+  }
+
+  /** Creates a new DRAFT. Any field may be missing or empty. Server responds 201. */
+  createDraft(data: ApplicationDraftPayload): Observable<MerchantApplication> {
+    return this.http.post<MerchantApplication>(BASE_URL, data);
+  }
+
+  /**
+   * Saves partial draft data (used by auto-save). Fields not sent keep their saved values.
+   * Errors: 403 not the creator, 409 no longer a draft.
+   */
+  saveDraft(id: string, data: ApplicationDraftPayload): Observable<MerchantApplication> {
+    return this.http.put<MerchantApplication>(`${itemUrl(id)}/draft`, data);
+  }
+
+  /**
+   * Submits the saved draft for review. The server validates the stored data, so save the
+   * latest changes first. Errors: 422 with field errors (ValidationErrorResponse), 409 not a draft.
+   */
+  submitApplication(id: string): Observable<MerchantApplication> {
+    // No body: the server submits what it has stored, not what the client sends.
+    return this.http.post<MerchantApplication>(`${itemUrl(id)}/submit`, null);
+  }
+}
+
+/** URL for one application. The id is encoded so a value like "../x" or "a?b" can't change the path. */
+function itemUrl(id: string): string {
+  return `${BASE_URL}/${encodeURIComponent(id)}`;
 }

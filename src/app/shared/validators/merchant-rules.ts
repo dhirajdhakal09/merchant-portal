@@ -8,27 +8,67 @@ import type {
 /*
  * Validation rules for a merchant application, as plain functions with no Angular code.
  *
- * Written once and used in two places:
- * - the mock server's submit endpoint (the real enforcement)
- * - the wizard's Reactive Forms validators (instant feedback; to be built), which will
- *   wrap these same functions so the client and server rules can't drift apart.
- *
- * Each rule returns an error message, or null when the value is valid.
+ * The shared constants and checks below are the single source of truth, used by:
+ * - the mock server's submit endpoint, through the message-returning rules further down
+ *   (the real enforcement)
+ * - the wizard's Angular validators in merchant.validators.ts (instant feedback)
+ * so the client and server rules can't drift apart.
  */
 
 export type Rule = (value: string | undefined) => string | null;
 
+/* ------------------------- shared constants & checks ---------------------- */
+
 export const BUSINESS_TYPES = ['Private Limited', 'Partnership', 'Sole Proprietorship'] as const;
 
-const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const PHONE = /^\+?[0-9][0-9\s-]{6,19}$/; // digits, spaces, dashes; optional leading +
-const REGISTRATION = /^[A-Z0-9-]{5,20}$/i;
-const ACCOUNT_NUMBER = /^\d{6,20}$/;
-const ROUTING_NUMBER = /^\d{9}$/;
-const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
-const MIN_OWNER_AGE = 18;
+/**
+ * name@domain.tld. Domain segments exclude dots, so there's only one way to split the
+ * input; this keeps matching linear (no catastrophic backtracking / ReDoS).
+ */
+export const EMAIL_PATTERN = /^[^\s@]+@[^\s@.]+(?:\.[^\s@.]+)+$/;
+/** Digits, spaces and dashes, optional leading +, 7–20 characters. */
+export const PHONE_PATTERN = /^\+?\d[\d\s-]{6,19}$/;
+/** 5–20 letters, digits or dashes, any case (e.g. DEMO-REG-100137). */
+export const REGISTRATION_PATTERN = /^[A-Z0-9-]{5,20}$/i;
+export const ACCOUNT_NUMBER_LENGTH = { min: 6, max: 20 } as const;
+export const ROUTING_NUMBER_LENGTH = { min: 9, max: 9 } as const;
+export const MIN_OWNER_AGE = 18;
 
-const isBlank = (v: string | undefined) => !v || v.trim() === '';
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+const DIGITS = /^\d+$/;
+
+export const isBlank = (v: string | null | undefined): boolean => !v || v.trim() === '';
+
+export const isDigits = (v: string): boolean => DIGITS.test(v);
+
+/** A real calendar date in YYYY-MM-DD form. Rejects impossible dates like 2001-02-30. */
+export function isValidIsoDate(value: string): boolean {
+  if (!ISO_DATE.test(value)) return false;
+  const date = new Date(`${value}T00:00:00Z`);
+  // Round-trip check: an impossible date rolls over (Feb 30 → Mar 2) and no longer matches.
+  return !Number.isNaN(date.getTime()) && date.toISOString().startsWith(value);
+}
+
+/**
+ * True if someone born on `isoDate` is at least `years` old on `today`.
+ * Birthday today counts. Uses UTC so the browser and server give the same answer.
+ * Someone born on 29 Feb reaches the age on 1 Mar in non-leap years.
+ */
+export function isAtLeastAge(isoDate: string, years: number, today: Date = new Date()): boolean {
+  const birth = Date.parse(`${isoDate}T00:00:00Z`);
+  const cutoff = Date.UTC(today.getUTCFullYear() - years, today.getUTCMonth(), today.getUTCDate());
+  return birth <= cutoff;
+}
+
+/** A parseable absolute URL using http or https. */
+export function isHttpUrl(value: string): boolean {
+  try {
+    const url = new URL(value);
+    return url.protocol === 'http:' || url.protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
 
 /* ----------------------------- building blocks ---------------------------- */
 
@@ -54,38 +94,29 @@ export const oneOf =
   (v) =>
     v && !allowed.includes(v) ? message : null;
 
-export const optionalUrl: Rule = (v) => {
-  if (isBlank(v)) return null;
-  try {
-    const url = new URL(v!.trim());
-    return url.protocol === 'http:' || url.protocol === 'https:'
-      ? null
-      : 'Website must start with http:// or https://.';
-  } catch {
-    return 'Enter a valid website address.';
-  }
-};
+export const digitsBetween =
+  (label: string, { min, max }: { min: number; max: number }): Rule =>
+  (v) => {
+    if (isBlank(v)) return null;
+    const value = v!.trim();
+    const ok = isDigits(value) && value.length >= min && value.length <= max;
+    if (ok) return null;
+    return min === max
+      ? `${label} must be exactly ${min} digits.`
+      : `${label} must be ${min}–${max} digits.`;
+  };
 
-/** Valid YYYY-MM-DD date, not in the future, owner at least 18 years old. */
+export const optionalUrl: Rule = (v) =>
+  isBlank(v) || isHttpUrl(v!.trim()) ? null : 'Enter a valid http:// or https:// website address.';
+
+/** Valid YYYY-MM-DD date and owner at least MIN_OWNER_AGE years old. */
 export const adultDateOfBirth: Rule = (v) => {
   if (isBlank(v)) return null; // `required` reports missing values
   const value = v!.trim();
-  const date = new Date(`${value}T00:00:00Z`);
-  // Round-trip check rejects impossible dates like 2001-02-30.
-  if (
-    !ISO_DATE.test(value) ||
-    Number.isNaN(date.getTime()) ||
-    !date.toISOString().startsWith(value)
-  ) {
-    return 'Enter a valid date of birth.';
-  }
-  const now = new Date();
-  const eighteenYearsAgo = Date.UTC(
-    now.getUTCFullYear() - MIN_OWNER_AGE,
-    now.getUTCMonth(),
-    now.getUTCDate(),
-  );
-  return date.getTime() > eighteenYearsAgo ? 'Owner must be at least 18 years old.' : null;
+  if (!isValidIsoDate(value)) return 'Enter a valid date of birth.';
+  return isAtLeastAge(value, MIN_OWNER_AGE)
+    ? null
+    : `Owner must be at least ${MIN_OWNER_AGE} years old.`;
 };
 
 /* ----------------------------- rules per field ---------------------------- */
@@ -96,15 +127,15 @@ export const BUSINESS_RULES: Record<keyof BusinessInfo, Rule[]> = {
   businessType: [required('Business type'), oneOf(BUSINESS_TYPES, 'Choose a valid business type.')],
   registrationNumber: [
     required('Registration number'),
-    matches(REGISTRATION, 'Use 5–20 letters, digits or dashes.'),
+    matches(REGISTRATION_PATTERN, 'Use 5–20 letters, digits or dashes.'),
   ],
   website: [optionalUrl],
 };
 
 export const OWNER_RULES: Record<keyof OwnerInfo, Rule[]> = {
   fullName: [required('Full name'), lengthBetween('Full name', 2, 100)],
-  email: [required('Email'), matches(EMAIL, 'Enter a valid email address.')],
-  phone: [required('Phone'), matches(PHONE, 'Enter a valid phone number.')],
+  email: [required('Email'), matches(EMAIL_PATTERN, 'Enter a valid email address.')],
+  phone: [required('Phone'), matches(PHONE_PATTERN, 'Enter a valid phone number.')],
   dateOfBirth: [required('Date of birth'), adultDateOfBirth],
 };
 
@@ -116,11 +147,11 @@ export const BANK_RULES: Record<keyof BankDetails, Rule[]> = {
   bankName: [required('Bank name'), lengthBetween('Bank name', 2, 120)],
   accountNumber: [
     required('Account number'),
-    matches(ACCOUNT_NUMBER, 'Account number must be 6–20 digits.'),
+    digitsBetween('Account number', ACCOUNT_NUMBER_LENGTH),
   ],
   routingNumber: [
     required('Routing number'),
-    matches(ROUTING_NUMBER, 'Routing number must be exactly 9 digits.'),
+    digitsBetween('Routing number', ROUTING_NUMBER_LENGTH),
   ],
 };
 

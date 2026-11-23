@@ -1,0 +1,73 @@
+@let value = form().getRawValue();
+<p class="text-body-secondary">Check the details below, then submit for review.</p>
+
+<section class="border-bottom py-3" aria-labelledby="review-business">
+  <div class="d-flex justify-content-between align-items-center">
+    <h3 id="review-business" class="h6 mb-0">Business info</h3>
+    <button type="button" class="btn btn-link btn-sm" (click)="edit.emit(0)">
+      Edit<span class="visually-hidden"> business info</span>
+    </button>
+  </div>
+  <dl class="row mb-0">
+    <dt class="col-sm-4">Legal name</dt>
+    <dd class="col-sm-8">{{ value.business.legalName }}</dd>
+    <dt class="col-sm-4">Trading name</dt>
+    <dd class="col-sm-8">{{ value.business.tradingName }}</dd>
+    <dt class="col-sm-4">Business type</dt>
+    <dd class="col-sm-8">{{ value.business.businessType }}</dd>
+    <dt class="col-sm-4">Registration number</dt>
+    <dd class="col-sm-8">{{ value.business.registrationNumber }}</dd>
+    <dt class="col-sm-4">Website</dt>
+    <dd class="col-sm-8">
+      @if (value.business.website) {
+        {{ value.business.website }}
+      } @else {
+        <span class="text-body-secondary">Not provided</span>
+      }
+    </dd>
+  </dl>
+</section>
+
+<section class="border-bottom py-3" aria-labelledby="review-owner">
+  <div class="d-flex justify-content-between align-items-center">
+    <h3 id="review-owner" class="h6 mb-0">Owner info</h3>
+    <button type="button" class="btn btn-link btn-sm" (click)="edit.emit(1)">
+      Edit<span class="visually-hidden"> owner info</span>
+    </button>
+  </div>
+  <dl class="row mb-0">
+    <dt class="col-sm-4">Full name</dt>
+    <dd class="col-sm-8">{{ value.owner.fullName }}</dd>
+    <dt class="col-sm-4">Date of birth</dt>
+    <!-- No timezone argument: DatePipe reads "1990-05-21" as local midnight, so formatting
+         it in local time shows the same calendar date in every time zone. -->
+    <dd class="col-sm-8">{{ value.owner.dateOfBirth | date: 'longDate' }}</dd>
+    <dt class="col-sm-4">Email</dt>
+    <dd class="col-sm-8">{{ value.owner.email }}</dd>
+    <dt class="col-sm-4">Phone</dt>
+    <dd class="col-sm-8">{{ value.owner.phone }}</dd>
+  </dl>
+</section>
+
+<section class="border-bottom py-3" aria-labelledby="review-bank">
+  <div class="d-flex justify-content-between align-items-center">
+    <h3 id="review-bank" class="h6 mb-0">Bank details</h3>
+    <button type="button" class="btn btn-link btn-sm" (click)="edit.emit(2)">
+      Edit<span class="visually-hidden"> bank details</span>
+    </button>
+  </div>
+  <dl class="row mb-0">
+    <dt class="col-sm-4">Account holder</dt>
+    <dd class="col-sm-8">{{ value.bank.accountHolderName }}</dd>
+    <dt class="col-sm-4">Bank name</dt>
+    <dd class="col-sm-8">{{ value.bank.bankName }}</dd>
+    <dt class="col-sm-4">Account number</dt>
+    <dd class="col-sm-8">
+      <!-- Screen readers hear "ending in 2345" instead of "bullet bullet bullet bullet" -->
+      <span aria-hidden="true">{{ mask(value.bank.accountNumber) }}</span>
+      <span class="visually-hidden">Ending in {{ lastFour(value.bank.accountNumber) }}</span>
+    </dd>
+    <dt class="col-sm-4">Routing number</dt>
+    <dd class="col-sm-8">{{ value.bank.routingNumber }}</dd>
+  </dl>
+</section>

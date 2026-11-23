@@ -81,6 +81,31 @@ export interface ValidationErrorResponse {
   errors: FieldError[];
 }
 
+/**
+ * Fields the API returns MASKED in list/detail responses (e.g. "••••1234", "••/••/1990").
+ * Full values only via POST /api/applications/:id/reveal (ADMIN or assigned REVIEWER).
+ */
+export type SensitiveField = 'bank.accountNumber' | 'bank.routingNumber' | 'owner.dateOfBirth';
+
+/** Response of POST /api/applications/:id/reveal. */
+export interface RevealResponse {
+  field: SensitiveField;
+  value: string;
+}
+
+/** Body of POST /api/applications/:id/decision. */
+export interface DecisionPayload {
+  decision: RiskDecision['decision'];
+  riskLevel: RiskDecision['riskLevel'];
+  /** Required; at least 20 characters when rejecting. */
+  notes: string;
+}
+
+/** Body of PUT /api/applications/:id/assign. */
+export interface AssignPayload {
+  reviewerId: string;
+}
+
 /** Generic envelope for server-side paginated lists. */
 export interface PaginatedResponse<T> {
   items: T[];

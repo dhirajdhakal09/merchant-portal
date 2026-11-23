@@ -1,0 +1,100 @@
+// Step indicator: numbered circles with labels. On small screens only the markers show
+// (plus the "Step 2 of 4" text below), so the bar never overflows.
+.wizard-steps {
+  display: flex;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.wizard-step {
+  flex: 1 1 0;
+  min-width: 0;
+  border-bottom: 3px solid var(--bs-border-color);
+  padding-bottom: 0.5rem;
+
+  &.is-current {
+    border-bottom-color: var(--bs-primary);
+  }
+
+  &.is-complete {
+    border-bottom-color: var(--bs-success);
+  }
+}
+
+.wizard-step-link {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--bs-secondary-color);
+  text-align: left;
+
+  .is-current & {
+    color: var(--bs-body-color);
+    font-weight: 600;
+  }
+
+  .is-complete & {
+    color: var(--bs-success-text-emphasis);
+  }
+}
+
+button.wizard-step-link {
+  cursor: pointer;
+
+  &:hover .wizard-step-label {
+    text-decoration: underline;
+  }
+}
+
+.wizard-step-marker {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border: 2px solid currentColor;
+  border-radius: 50%;
+  font-size: 0.875rem;
+
+  .is-current & {
+    border-color: var(--bs-primary);
+    background: var(--bs-primary);
+    color: #fff;
+  }
+
+  .is-complete & {
+    border-color: var(--bs-success);
+    background: var(--bs-success);
+    color: #fff;
+  }
+}
+
+.wizard-step-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+
+  // Visually hidden on small screens but still read by screen readers
+  // (display: none would remove the step names from the accessible name too).
+  @media (max-width: 767.98px) {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    border: 0;
+  }
+}
+
+// Headings receive focus programmatically on step change; no need for a focus ring there.
+.step-heading:focus {
+  outline: none;
+}

@@ -1,0 +1,83 @@
+@let c = group().controls;
+<div class="row g-3" [formGroup]="group()">
+  <div class="col-12 col-md-6">
+    <label for="owner-fullName" class="form-label">Full name</label>
+    <input
+      id="owner-fullName"
+      class="form-control"
+      formControlName="fullName"
+      autocomplete="name"
+      [class.is-invalid]="showError(c.fullName)"
+      [attr.aria-invalid]="showError(c.fullName) || null"
+      [attr.aria-describedby]="showError(c.fullName) ? 'owner-fullName-error' : null"
+    />
+    @if (showError(c.fullName)) {
+      <div id="owner-fullName-error" class="invalid-feedback">
+        {{ message(c.fullName.errors, 'Full name') }}
+      </div>
+    }
+  </div>
+
+  <div class="col-12 col-md-6">
+    <label for="owner-dateOfBirth" class="form-label">Date of birth</label>
+    <input
+      id="owner-dateOfBirth"
+      type="date"
+      class="form-control"
+      formControlName="dateOfBirth"
+      autocomplete="bday"
+      [class.is-invalid]="showError(c.dateOfBirth)"
+      [attr.aria-invalid]="showError(c.dateOfBirth) || null"
+      [attr.aria-describedby]="
+        'owner-dateOfBirth-hint' + (showError(c.dateOfBirth) ? ' owner-dateOfBirth-error' : '')
+      "
+    />
+    <div id="owner-dateOfBirth-hint" class="form-text">The owner must be at least 18.</div>
+    @if (showError(c.dateOfBirth)) {
+      <div id="owner-dateOfBirth-error" class="invalid-feedback d-block">
+        {{ message(c.dateOfBirth.errors, 'Date of birth') }}
+      </div>
+    }
+  </div>
+
+  <div class="col-12 col-md-6">
+    <label for="owner-email" class="form-label">Email</label>
+    <input
+      id="owner-email"
+      type="email"
+      class="form-control"
+      formControlName="email"
+      autocomplete="email"
+      [class.is-invalid]="showError(c.email)"
+      [attr.aria-invalid]="showError(c.email) || null"
+      [attr.aria-describedby]="showError(c.email) ? 'owner-email-error' : null"
+    />
+    @if (showError(c.email)) {
+      <div id="owner-email-error" class="invalid-feedback">
+        {{ message(c.email.errors, 'Email address') }}
+      </div>
+    }
+  </div>
+
+  <div class="col-12 col-md-6">
+    <label for="owner-phone" class="form-label">Phone</label>
+    <input
+      id="owner-phone"
+      type="tel"
+      class="form-control"
+      formControlName="phone"
+      autocomplete="tel"
+      [class.is-invalid]="showError(c.phone)"
+      [attr.aria-invalid]="showError(c.phone) || null"
+      [attr.aria-describedby]="
+        'owner-phone-hint' + (showError(c.phone) ? ' owner-phone-error' : '')
+      "
+    />
+    <div id="owner-phone-hint" class="form-text">Digits, spaces or dashes; may start with +.</div>
+    @if (showError(c.phone)) {
+      <div id="owner-phone-error" class="invalid-feedback d-block">
+        {{ message(c.phone.errors, 'Phone number') }}
+      </div>
+    }
+  </div>
+</div>

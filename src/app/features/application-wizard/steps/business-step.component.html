@@ -1,0 +1,104 @@
+@let c = group().controls;
+<div class="row g-3" [formGroup]="group()">
+  <div class="col-12 col-md-6">
+    <label for="business-legalName" class="form-label">Legal name</label>
+    <input
+      id="business-legalName"
+      class="form-control"
+      formControlName="legalName"
+      autocomplete="organization"
+      [class.is-invalid]="showError(c.legalName)"
+      [attr.aria-invalid]="showError(c.legalName) || null"
+      [attr.aria-describedby]="showError(c.legalName) ? 'business-legalName-error' : null"
+    />
+    @if (showError(c.legalName)) {
+      <div id="business-legalName-error" class="invalid-feedback">
+        {{ message(c.legalName.errors, 'Legal name') }}
+      </div>
+    }
+  </div>
+
+  <div class="col-12 col-md-6">
+    <label for="business-tradingName" class="form-label">Trading name</label>
+    <input
+      id="business-tradingName"
+      class="form-control"
+      formControlName="tradingName"
+      [class.is-invalid]="showError(c.tradingName)"
+      [attr.aria-invalid]="showError(c.tradingName) || null"
+      [attr.aria-describedby]="showError(c.tradingName) ? 'business-tradingName-error' : null"
+    />
+    @if (showError(c.tradingName)) {
+      <div id="business-tradingName-error" class="invalid-feedback">
+        {{ message(c.tradingName.errors, 'Trading name') }}
+      </div>
+    }
+  </div>
+
+  <div class="col-12 col-md-6">
+    <label for="business-businessType" class="form-label">Business type</label>
+    <select
+      id="business-businessType"
+      class="form-select"
+      formControlName="businessType"
+      [class.is-invalid]="showError(c.businessType)"
+      [attr.aria-invalid]="showError(c.businessType) || null"
+      [attr.aria-describedby]="showError(c.businessType) ? 'business-businessType-error' : null"
+    >
+      <option value="">Select a business type</option>
+      @for (type of businessTypes; track type) {
+        <option [value]="type">{{ type }}</option>
+      }
+    </select>
+    @if (showError(c.businessType)) {
+      <div id="business-businessType-error" class="invalid-feedback">
+        {{ message(c.businessType.errors, 'Business type') }}
+      </div>
+    }
+  </div>
+
+  <div class="col-12 col-md-6">
+    <label for="business-registrationNumber" class="form-label">Registration number</label>
+    <input
+      id="business-registrationNumber"
+      class="form-control"
+      formControlName="registrationNumber"
+      [class.is-invalid]="showError(c.registrationNumber)"
+      [attr.aria-invalid]="showError(c.registrationNumber) || null"
+      [attr.aria-describedby]="
+        'business-registrationNumber-hint' +
+        (showError(c.registrationNumber) ? ' business-registrationNumber-error' : '')
+      "
+    />
+    <div id="business-registrationNumber-hint" class="form-text">
+      5–20 letters, digits or dashes, e.g. DEMO-REG-123456.
+    </div>
+    @if (showError(c.registrationNumber)) {
+      <div id="business-registrationNumber-error" class="invalid-feedback d-block">
+        {{ message(c.registrationNumber.errors, 'Registration number') }}
+      </div>
+    }
+  </div>
+
+  <div class="col-12">
+    <label for="business-website" class="form-label">
+      Website <span class="text-body-secondary">(optional)</span>
+    </label>
+    <input
+      id="business-website"
+      type="url"
+      class="form-control"
+      formControlName="website"
+      autocomplete="url"
+      placeholder="https://"
+      [class.is-invalid]="showError(c.website)"
+      [attr.aria-invalid]="showError(c.website) || null"
+      [attr.aria-describedby]="showError(c.website) ? 'business-website-error' : null"
+    />
+    @if (showError(c.website)) {
+      <div id="business-website-error" class="invalid-feedback">
+        {{ message(c.website.errors, 'Website') }}
+      </div>
+    }
+  </div>
+</div>
