@@ -1,5 +1,6 @@
 import { Routes, UrlMatchResult, UrlSegment } from '@angular/router';
 import { authGuard } from './core/auth/auth.guard';
+import { guestGuard } from './core/auth/guest.guard';
 import { roleGuard } from './core/auth/role.guard';
 import { unsavedChangesGuard } from './core/guards/unsaved-changes.guard';
 import { ShellComponent } from './core/layout/shell/shell.component';
@@ -31,8 +32,10 @@ export function applicationWizardMatcher(segments: UrlSegment[]): UrlMatchResult
 
 export const routes: Routes = [
   // Public route, rendered without the app shell (no header).
+  // Signed-in users are sent to the dashboard instead (guestGuard).
   {
     path: 'login',
+    canActivate: [guestGuard],
     loadComponent: () => import('./features/login/login.component'),
   },
   // Authenticated area: every child renders inside the shell's <router-outlet>.

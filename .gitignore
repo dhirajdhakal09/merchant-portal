@@ -44,6 +44,9 @@ __screenshots__/
 .env.*
 !.env.example
 
+# Personal study notes (kept locally, not published)
+/docs/
+
 # System files
 .DS_Store
 Thumbs.db

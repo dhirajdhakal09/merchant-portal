@@ -124,7 +124,7 @@ export class AuthService {
       const refreshToken = sessionStorage.getItem(REFRESH_TOKEN_KEY);
 
       this.refreshInFlight$ = this.http
-        .post<AuthResponse>('/api/auth/refresh', { refreshToken })
+        .post<RefreshResponse>('/api/auth/refresh', { refreshToken })
         .pipe(
           map((res) => {
             this._accessToken.set(res.accessToken);

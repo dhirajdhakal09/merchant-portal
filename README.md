@@ -12,6 +12,7 @@ A merchant payments onboarding portal built with **Angular 22** for a senior fro
 - [Content Security Policy](#content-security-policy)
 - [Testing](#testing)
 - [Trade-offs and improvements](#trade-offs-and-improvements)
+- [Known limitations](#known-limitations)
 - [AI usage disclosure](#ai-usage-disclosure)
 
 ---
@@ -248,11 +249,12 @@ Related headers worth sending too: `X-Content-Type-Options: nosniff`, `Referrer-
 
 **Vitest + Angular TestBed.** Run all tests once with `npx ng test --watch=false` (or `npm test` for watch mode). Run one file with `npx ng test --watch=false --include="**/draft-autosave.service.spec.ts"`.
 
-**Current suite: 130 tests in 13 files, all passing.**
+**Current suite: 135 tests in 14 files, all passing.**
 
 | Area | What's covered |
 | --- | --- |
-| Auth | `authGuard` (redirect with `returnUrl`), `roleGuard` (allow, redirect, fail closed), `AuthService` login/logout and token storage, interceptor token scoping (`/api/` only) |
+| Auth | `authGuard` (redirect with `returnUrl`), `guestGuard` (signed-in users sent from `/login` to `/dashboard`), `roleGuard` (allow, redirect, fail closed), `AuthService` login/logout and token storage, interceptor token scoping (`/api/` only) |
+| Refresh once | Three concurrent 401s cause **one** `POST /api/auth/refresh` and three retries with the new token; a retry that gets 401 again errors without a second refresh (no loop); a failed refresh errors every waiting request and logs the user out. Uses the real `AuthService` |
 | API layer | `ApplicationApiService`: every method's URL, verb, body, query params, id encoding, error passthrough (`HttpTestingController`) |
 | Validators | Every custom validator incl. edge cases (exactly 18 today, 29 February, empty values), `serverError()`, client/server rule agreement |
 | Form | Structure matches the model, validators wired to the right controls and groups |
@@ -271,28 +273,33 @@ Every feature was also verified end to end during development with temporary tes
 **Trade-offs made**
 
 - **Mock backend in the browser (MSW):** no server to run, and the network layer is real (DevTools shows requests). But the "server" lives in the same bundle: tokens are unsigned, data resets on reload, and masking happens in the same JS context. A real backend would sign JWTs, hash passwords and persist data.
-- **MSW starts in every build** (`main.ts`) because there's no real API. With a real backend it would be loaded only in development (dynamic import), which would also remove the bundle-size warning (initial bundle ~810 kB vs the 500 kB budget).
+- **MSW starts in every build** (`main.ts`) because there's no real API. It is loaded with a **dynamic import**, so MSW and the mock data sit in a separate lazy chunk instead of the initial bundle (initial bundle down from ~814 kB to ~530 kB). The remaining ~30 kB over the 500 kB budget is mostly Bootstrap's stylesheet.
 - **Refresh token in `sessionStorage`** rather than an `httpOnly` cookie, because a browser-only mock can't set one.
 - **Validation rules shared as TypeScript functions** between client and mock server. Realistic only because both are TypeScript; a separate backend would share a schema (e.g. OpenAPI/JSON Schema) instead.
 - **`window.confirm()`** for the leave-page warning (accessible and simple); a custom modal would look nicer.
 
 **With more time**
 
-- **Unit-test the interceptor's refresh-once behaviour** with several concurrent 401s (currently verified manually; only token scoping is unit-tested).
 - Tests for the dashboard, `HasRoleDirective` and shell; an e2e suite (Playwright) for the main flows.
-- Load MSW only in development; restore the bundle budget.
+- With a real backend, load MSW only in development; trim Bootstrap to the parts used to get under the bundle budget.
 - Apply the CSP above with nonces and `autoCsp`; add security headers.
 - Optional brief items: dashboard counts by status, real-time status updates (Socket.IO).
 - Audit log view for admins; retry with backoff for auto-save; offline detection.
-- Small cleanup: `refreshAccessToken()` types its response as `AuthResponse` although the endpoint returns `RefreshResponse`.
+
+---
+
+## Known limitations
+
+- **No tests yet for the dashboard, `HasRoleDirective` and the shell.** The rest of the app is covered as listed under [Testing](#testing).
+- **CSP is documented but not applied.** A Content Security Policy is an HTTP response header set by a server, and this project has no real server. The [Content Security Policy](#content-security-policy) section gives the header and the build changes needed.
+- **MSW runs in production builds** because there is no real backend: the mock API is the only API the app can talk to. It is loaded as a separate chunk, but it still ships in the production output.
 
 ---
 
 ## AI usage disclosure
 
-> **⚠️ PLACEHOLDER: to be written by the candidate.**
->
-> _Describe which AI tools were used, for what, and how the output was reviewed and verified._
+> **I used Claude (chat) to learn Angular 17+ features, plan the architecture, and understand design decisions, and Claude Code in VS Code to implement the code step by step. I reviewed each change, ran the tests, and tested each feature manually in the browser.**
+
 
 ---
 
