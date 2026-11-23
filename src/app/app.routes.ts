@@ -28,6 +28,14 @@ export const routes: Routes = [
         loadComponent: () => import('./features/application-wizard/application-wizard.component'),
       },
       {
+        // Same wizard, opened on an existing draft. UX gate only: the API must also check
+        // that the draft belongs to this SALES user before allowing changes.
+        path: 'applications/:id/edit',
+        canActivate: [roleGuard],
+        data: { roles: ['SALES'] satisfies Role[] },
+        loadComponent: () => import('./features/application-wizard/application-wizard.component'),
+      },
+      {
         path: 'applications/:id',
         loadComponent: () => import('./features/application-detail/application-detail.component'),
       },

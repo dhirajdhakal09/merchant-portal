@@ -212,6 +212,7 @@ function buildApplication(i: number): MerchantApplication {
     },
     createdById: SALES_IDS[i % SALES_IDS.length],
     assignedReviewerId,
+    assignedReviewerName: assignedReviewerId ? reviewerName(assignedReviewerId) : undefined,
     riskHistory,
     createdAt: iso(createdMs),
     updatedAt: iso(updatedMs),

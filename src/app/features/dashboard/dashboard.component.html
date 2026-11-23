@@ -1,2 +1,187 @@
-<h1 class="h3">Applications dashboard</h1>
-<p class="text-body-secondary">Coming soon.</p>
+<div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+  <h1 class="h3 mb-0">Applications</h1>
+  <a *appHasRole="['SALES']" class="btn btn-primary" routerLink="/applications/new">
+    New application
+  </a>
+</div>
+
+<!-- Filter bar: full-width rows on mobile, side by side from md up -->
+<div class="row g-2 mb-3">
+  <div class="col-12 col-md-8">
+    <label for="search" class="form-label">Search by business name</label>
+    <input
+      id="search"
+      type="search"
+      class="form-control"
+      placeholder="e.g. Himalayan"
+      [formControl]="searchControl"
+    />
+  </div>
+  <div class="col-12 col-md-4">
+    <label for="status-filter" class="form-label">Status</label>
+    <select
+      id="status-filter"
+      class="form-select"
+      #statusSelect
+      [value]="query().status ?? ''"
+      (change)="setStatus(statusSelect.value)"
+    >
+      <option value="">All</option>
+      @for (status of statuses; track status) {
+        <option [value]="status">{{ statusMeta[status].label }}</option>
+      }
+    </select>
+  </div>
+</div>
+
+<!-- Always in the DOM, so screen readers announce loading/error/empty changes -->
+<div aria-live="polite">
+  @if (loading()) {
+    <app-load-state state="loading" message="Loading applications" />
+  } @else if (error()) {
+    <app-load-state
+      state="error"
+      message="We couldn't load the applications. Please check your connection and try again."
+      (retry)="retry()"
+    />
+  } @else if (data()?.items?.length === 0) {
+    <app-load-state state="empty" [message]="emptyMessage()" />
+  }
+</div>
+
+@if (!loading() && data(); as page) {
+  @if (page.items.length > 0) {
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <caption class="visually-hidden">
+          Merchant applications
+        </caption>
+        <thead>
+          <tr>
+            <th scope="col">Business</th>
+            <th scope="col">Status</th>
+            <th scope="col">Assigned reviewer</th>
+            <th scope="col">Last updated</th>
+            <th scope="col" class="text-end">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (app of page.items; track app.id) {
+            <tr>
+              <td class="business-name">{{ app.business.legalName }}</td>
+              <td>
+                <span class="badge" [class]="statusMeta[app.status].badge">
+                  {{ statusMeta[app.status].label }}
+                </span>
+              </td>
+              <td>
+                @if (app.assignedReviewerName) {
+                  {{ app.assignedReviewerName }}
+                } @else {
+                  <span class="text-body-secondary">Unassigned</span>
+                }
+              </td>
+              <td>
+                <time [attr.datetime]="app.updatedAt">{{ app.updatedAt | date: 'medium' }}</time>
+              </td>
+              <td class="text-end">
+                <div class="actions">
+                  <a
+                    class="btn btn-sm btn-outline-secondary"
+                    [routerLink]="['/applications', app.id]"
+                  >
+                    View<span class="visually-hidden"> {{ app.business.legalName }}</span>
+                  </a>
+                  @if (app.status === 'DRAFT') {
+                    <a
+                      *appHasRole="['SALES']"
+                      class="btn btn-sm btn-outline-primary"
+                      [routerLink]="['/applications', app.id, 'edit']"
+                    >
+                      Continue editing<span class="visually-hidden">
+                        {{ app.business.legalName }}</span
+                      >
+                    </a>
+                  }
+                  @if (app.status === 'SUBMITTED' || app.status === 'IN_REVIEW') {
+                    <a
+                      *appHasRole="['REVIEWER']"
+                      class="btn btn-sm btn-primary"
+                      [routerLink]="['/applications', app.id]"
+                    >
+                      Review<span class="visually-hidden"> {{ app.business.legalName }}</span>
+                    </a>
+                  }
+                </div>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Footer: range label, page size and pager; stacks on mobile -->
+    <div
+      class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3 mt-3"
+    >
+      <p class="mb-0 text-body-secondary">{{ rangeLabel() }}</p>
+
+      <div class="d-flex flex-wrap align-items-center gap-3">
+        <div class="d-flex align-items-center gap-2">
+          <label for="page-size" class="form-label mb-0 text-nowrap">Rows per page</label>
+          <select
+            id="page-size"
+            class="form-select form-select-sm w-auto"
+            #pageSizeSelect
+            [value]="query().pageSize"
+            (change)="changePageSize(pageSizeSelect.value)"
+          >
+            @for (size of pageSizes; track size) {
+              <option [value]="size">{{ size }}</option>
+            }
+          </select>
+        </div>
+
+        <nav aria-label="Applications pagination">
+          <ul class="pagination pagination-sm mb-0">
+            <li class="page-item" [class.disabled]="currentPage() === 1">
+              <button
+                type="button"
+                class="page-link"
+                aria-label="Previous page"
+                [disabled]="currentPage() === 1"
+                (click)="goToPage(currentPage() - 1)"
+              >
+                <span aria-hidden="true">&laquo;</span>
+              </button>
+            </li>
+            @for (n of pageNumbers(); track n) {
+              <li class="page-item" [class.active]="n === currentPage()">
+                <button
+                  type="button"
+                  class="page-link"
+                  [attr.aria-label]="'Page ' + n"
+                  [attr.aria-current]="n === currentPage() ? 'page' : null"
+                  (click)="goToPage(n)"
+                >
+                  {{ n }}
+                </button>
+              </li>
+            }
+            <li class="page-item" [class.disabled]="currentPage() === totalPages()">
+              <button
+                type="button"
+                class="page-link"
+                aria-label="Next page"
+                [disabled]="currentPage() === totalPages()"
+                (click)="goToPage(currentPage() + 1)"
+              >
+                <span aria-hidden="true">&raquo;</span>
+              </button>
+            </li>
+          </ul>
+        </nav>
+      </div>
+    </div>
+  }
+}

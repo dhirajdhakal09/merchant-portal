@@ -50,6 +50,8 @@ export interface MerchantApplication {
   createdById: string;
   /** The REVIEWER it is assigned to, if any (set by ADMIN). */
   assignedReviewerId?: string;
+  /** Display name of the assigned reviewer, sent by the server so the UI needn't look it up. */
+  assignedReviewerName?: string;
   riskHistory: RiskDecision[];
   /** ISO date-time string. */
   createdAt: string;
