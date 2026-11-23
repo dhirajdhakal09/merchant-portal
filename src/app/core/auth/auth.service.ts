@@ -121,7 +121,7 @@ export class AuthService {
 
   refreshAccessToken(): Observable<string> {
     if (!this.refreshInFlight$) {
-      const refreshToken = sessionStorage.getItem('refreshToken');
+      const refreshToken = sessionStorage.getItem(REFRESH_TOKEN_KEY);
 
       this.refreshInFlight$ = this.http.post<AuthResponse>('/api/auth/refresh', { refreshToken }).pipe(
         map((res) => {
