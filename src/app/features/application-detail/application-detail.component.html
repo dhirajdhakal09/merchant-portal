@@ -1,2 +1,204 @@
-<h1 class="h3">Application detail</h1>
-<p class="text-body-secondary">Coming soon.</p>
+<a routerLink="/dashboard" class="link-secondary d-inline-block mb-3">
+  <span aria-hidden="true">←</span> Back to applications
+</a>
+
+<!-- Always in the DOM, so screen readers announce loading and error changes -->
+<div aria-live="polite">
+  <!-- Spinner only for the first load; on reload (after an action) the page stays in place -->
+  @if (application.isLoading() && !app()) {
+    <app-load-state state="loading" message="Loading application" />
+  } @else if (errorStatus() === 404) {
+    <div class="alert alert-warning">
+      <h1 class="h5 alert-heading">Application not found</h1>
+      <p class="mb-0">It may have been removed, or the link may be wrong.</p>
+    </div>
+  } @else if (errorStatus() === 403) {
+    <div class="alert alert-warning">
+      <h1 class="h5 alert-heading">You don't have access to this application</h1>
+      <p class="mb-0">It isn't assigned to you. Contact an administrator if you need access.</p>
+    </div>
+  } @else if (application.error()) {
+    <app-load-state
+      state="error"
+      message="We couldn't load this application. Please check your connection and try again."
+      (retry)="application.reload()"
+    />
+  }
+</div>
+
+@if (app(); as a) {
+  <header class="d-flex flex-column flex-md-row justify-content-between gap-3 mb-4">
+    <div>
+      <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
+        <h1 class="h3 mb-0">{{ a.business.legalName || 'Untitled draft' }}</h1>
+        <app-status-badge [status]="a.status" />
+      </div>
+      <p class="text-body-secondary small mb-0">
+        Created <time [attr.datetime]="a.createdAt">{{ a.createdAt | date: 'medium' }}</time>
+        <span aria-hidden="true"> · </span>
+        Last updated <time [attr.datetime]="a.updatedAt">{{ a.updatedAt | date: 'medium' }}</time>
+      </p>
+    </div>
+    @if (canContinueEditing()) {
+      <div>
+        <a class="btn btn-primary" [routerLink]="['/applications', a.id, 'edit']">
+          Continue editing
+        </a>
+      </div>
+    }
+  </header>
+
+  <!-- Outcome of the last action. Owned by the page: the action that produced it may no
+       longer be shown after the reload (e.g. a decided application has no reviewer controls). -->
+  <div aria-live="polite">
+    @if (notice(); as text) {
+      <div class="alert alert-info d-flex justify-content-between align-items-start gap-2">
+        <span>{{ text }}</span>
+        <button
+          type="button"
+          class="btn-close"
+          aria-label="Dismiss message"
+          (click)="notice.set(null)"
+        ></button>
+      </div>
+    }
+  </div>
+
+  <!-- Assigned REVIEWER only: role check (directive) + assignment check (isAssignedReviewer).
+       Never shown to SALES. The server enforces the same rules (403). -->
+  @if (showReviewActions()) {
+    <section *appHasRole="['REVIEWER']" class="card mb-3" aria-labelledby="review-heading">
+      <h2 id="review-heading" class="card-header h6 mb-0">Your review</h2>
+      <div class="card-body">
+        <app-review-actions [application]="a" (changed)="onActionDone($event)" />
+      </div>
+    </section>
+  }
+
+  <!-- ADMIN only, while the application is SUBMITTED or IN_REVIEW. -->
+  @if (showAssign()) {
+    <section *appHasRole="['ADMIN']" class="card mb-3" aria-labelledby="assign-heading">
+      <h2 id="assign-heading" class="card-header h6 mb-0">Reviewer assignment</h2>
+      <div class="card-body">
+        <app-assign-reviewer [application]="a" (changed)="onActionDone($event)" />
+      </div>
+    </section>
+  }
+
+  <div class="row g-3">
+    <div class="col-12 col-lg-6">
+      <section class="card h-100" aria-labelledby="business-heading">
+        <h2 id="business-heading" class="card-header h6 mb-0">Business info</h2>
+        <div class="card-body">
+          <dl class="row mb-0">
+            <dt class="col-sm-5">Legal name</dt>
+            <dd class="col-sm-7">{{ a.business.legalName || 'Not provided' }}</dd>
+            <dt class="col-sm-5">Trading name</dt>
+            <dd class="col-sm-7">{{ a.business.tradingName || 'Not provided' }}</dd>
+            <dt class="col-sm-5">Business type</dt>
+            <dd class="col-sm-7">{{ a.business.businessType || 'Not provided' }}</dd>
+            <dt class="col-sm-5">Registration number</dt>
+            <dd class="col-sm-7">{{ a.business.registrationNumber || 'Not provided' }}</dd>
+            <dt class="col-sm-5">Website</dt>
+            <!-- Plain text, not a link: draft data isn't validated, so it could be any string -->
+            <dd class="col-sm-7 text-break mb-0">{{ a.business.website || 'Not provided' }}</dd>
+          </dl>
+        </div>
+      </section>
+    </div>
+
+    <div class="col-12 col-lg-6">
+      <section class="card h-100" aria-labelledby="owner-heading">
+        <h2 id="owner-heading" class="card-header h6 mb-0">Owner info</h2>
+        <div class="card-body">
+          <dl class="row mb-0">
+            <dt class="col-sm-5">Full name</dt>
+            <dd class="col-sm-7">{{ a.owner.fullName || 'Not provided' }}</dd>
+            <dt class="col-sm-5">Email</dt>
+            <dd class="col-sm-7 text-break">{{ a.owner.email || 'Not provided' }}</dd>
+            <dt class="col-sm-5">Phone</dt>
+            <dd class="col-sm-7">{{ a.owner.phone || 'Not provided' }}</dd>
+            <dt class="col-sm-5">Date of birth</dt>
+            <dd class="col-sm-7 mb-0">
+              <app-masked-field
+                label="Date of birth"
+                field="owner.dateOfBirth"
+                [maskedValue]="a.owner.dateOfBirth"
+                [applicationId]="a.id"
+                [canReveal]="canReveal()"
+              />
+            </dd>
+          </dl>
+        </div>
+      </section>
+    </div>
+
+    <div class="col-12 col-lg-6">
+      <section class="card h-100" aria-labelledby="bank-heading">
+        <h2 id="bank-heading" class="card-header h6 mb-0">Bank details</h2>
+        <div class="card-body">
+          <dl class="row mb-0">
+            <dt class="col-sm-5">Account holder</dt>
+            <dd class="col-sm-7">{{ a.bank.accountHolderName || 'Not provided' }}</dd>
+            <dt class="col-sm-5">Bank name</dt>
+            <dd class="col-sm-7">{{ a.bank.bankName || 'Not provided' }}</dd>
+            <dt class="col-sm-5">Account number</dt>
+            <dd class="col-sm-7">
+              <app-masked-field
+                label="Account number"
+                field="bank.accountNumber"
+                [maskedValue]="a.bank.accountNumber"
+                [applicationId]="a.id"
+                [canReveal]="canReveal()"
+              />
+            </dd>
+            <dt class="col-sm-5">Routing number</dt>
+            <dd class="col-sm-7 mb-0">
+              <app-masked-field
+                label="Routing number"
+                field="bank.routingNumber"
+                [maskedValue]="a.bank.routingNumber"
+                [applicationId]="a.id"
+                [canReveal]="canReveal()"
+              />
+            </dd>
+          </dl>
+        </div>
+      </section>
+    </div>
+
+    <div class="col-12">
+      <section class="card" aria-labelledby="history-heading">
+        <h2 id="history-heading" class="card-header h6 mb-0">Risk decision history</h2>
+        <div class="card-body">
+          @if (history().length > 0) {
+            <!-- Ordered list: the sequence of decisions matters (newest first) -->
+            <ol class="list-unstyled mb-0">
+              @for (decision of history(); track decision.id) {
+                <li class="decision">
+                  <div class="d-flex flex-wrap align-items-center gap-2">
+                    <span class="badge" [class]="decisionMeta[decision.decision].badge">
+                      {{ decisionMeta[decision.decision].label }}
+                    </span>
+                    <span class="badge" [class]="riskMeta[decision.riskLevel].badge">
+                      {{ riskMeta[decision.riskLevel].label }}
+                    </span>
+                    <span class="small text-body-secondary">
+                      by {{ decision.reviewerName }} on
+                      <time [attr.datetime]="decision.decidedAt">
+                        {{ decision.decidedAt | date: 'medium' }}
+                      </time>
+                    </span>
+                  </div>
+                  <p class="mb-0 mt-2">{{ decision.notes }}</p>
+                </li>
+              }
+            </ol>
+          } @else {
+            <p class="text-body-secondary mb-0">No decisions yet.</p>
+          }
+        </div>
+      </section>
+    </div>
+  </div>
+}

@@ -20,6 +20,7 @@ import { finalize, switchMap } from 'rxjs';
 import type { ValidationErrorResponse } from '../../core/models/application.model';
 import { ApplicationApiService } from '../../core/services/application-api.service';
 import { LoadStateComponent } from '../../shared/components/load-state/load-state.component';
+import { httpStatusOf } from '../../shared/utils/http-status';
 import { serverError } from '../../shared/validators/merchant.validators';
 import type { HasUnsavedChanges } from '../../core/guards/unsaved-changes.guard';
 import { buildApplicationForm, toFormValue } from './application-form';
@@ -343,14 +344,4 @@ export default class ApplicationWizardComponent implements HasUnsavedChanges {
       { injector: this.injector },
     );
   }
-}
-
-/**
- * HTTP status of a resource error. rxResource passes an HttpErrorResponse through as is, but
- * wraps anything that isn't Error-like, keeping the original in `cause`; handle both.
- */
-function httpStatusOf(error: unknown): number | undefined {
-  if (error instanceof HttpErrorResponse) return error.status;
-  const cause = (error as { cause?: unknown } | undefined)?.cause;
-  return cause instanceof HttpErrorResponse ? cause.status : undefined;
 }

@@ -1,0 +1,11 @@
+// Separators between decisions, without a line after the last one.
+.decision + .decision {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--bs-border-color);
+}
+
+// Labels slightly bolder than values, so label/value pairs are easy to scan.
+dt {
+  font-weight: 500;
+}

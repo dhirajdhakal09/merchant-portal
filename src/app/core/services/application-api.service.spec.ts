@@ -3,10 +3,13 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { TestBed } from '@angular/core/testing';
 import type {
   ApplicationDraftPayload,
+  DecisionPayload,
   MerchantApplication,
   PaginatedResponse,
+  RevealResponse,
   ValidationErrorResponse,
 } from '../models/application.model';
+import type { UserSummary } from '../models/user.model';
 import { ApplicationApiService } from './application-api.service';
 
 describe('ApplicationApiService', () => {
@@ -216,6 +219,149 @@ describe('ApplicationApiService', () => {
 
       expect(error?.status).toBe(422);
       expect(error?.error).toEqual(body); // the field list is available to the wizard
+    });
+  });
+  /* --------------------------------- review --------------------------------- */
+
+  describe('revealField', () => {
+    it('POSTs { field } to /api/applications/:id/reveal and emits the revealed value', () => {
+      const response: RevealResponse = { field: 'bank.accountNumber', value: '0000012345' };
+      let received: unknown;
+      service.revealField('app-007', 'bank.accountNumber').subscribe((res) => (received = res));
+
+      const req = httpMock.expectOne('/api/applications/app-007/reveal');
+      expect(req.request.method).toBe('POST');
+      expect(req.request.body).toEqual({ field: 'bank.accountNumber' });
+      req.flush(response);
+
+      expect(received).toEqual(response);
+    });
+
+    it('URL-encodes the id', () => {
+      service.revealField('a/b', 'owner.dateOfBirth').subscribe();
+
+      const req = httpMock.expectOne('/api/applications/a%2Fb/reveal');
+      expect(req.request.body).toEqual({ field: 'owner.dateOfBirth' });
+      req.flush({});
+    });
+
+    it('passes a 403 (not allowed to reveal) to the caller unchanged', () => {
+      let error: HttpErrorResponse | undefined;
+      service.revealField('app-007', 'bank.routingNumber').subscribe({ error: (e) => (error = e) });
+
+      httpMock
+        .expectOne('/api/applications/app-007/reveal')
+        .flush({ message: 'Not allowed' }, { status: 403, statusText: 'Forbidden' });
+
+      expect(error?.status).toBe(403);
+    });
+  });
+
+  describe('startReview', () => {
+    it('POSTs to /api/applications/:id/start-review with no body and emits the application', () => {
+      const inReview = { id: 'app-007', status: 'IN_REVIEW' } as MerchantApplication;
+      let received: unknown;
+      service.startReview('app-007').subscribe((res) => (received = res));
+
+      const req = httpMock.expectOne('/api/applications/app-007/start-review');
+      expect(req.request.method).toBe('POST');
+      expect(req.request.body).toBeNull();
+      req.flush(inReview);
+
+      expect(received).toEqual(inReview);
+    });
+
+    it('passes a 409 (wrong status) to the caller unchanged', () => {
+      let error: HttpErrorResponse | undefined;
+      service.startReview('app-007').subscribe({ error: (e) => (error = e) });
+
+      httpMock
+        .expectOne('/api/applications/app-007/start-review')
+        .flush({ message: 'Not allowed while IN_REVIEW' }, { status: 409, statusText: 'Conflict' });
+
+      expect(error?.status).toBe(409);
+    });
+  });
+
+  describe('submitDecision', () => {
+    const decision: DecisionPayload = {
+      decision: 'REJECTED',
+      riskLevel: 'HIGH',
+      notes: 'Ownership documents could not be verified.',
+    };
+
+    it('POSTs the decision to /api/applications/:id/decision and emits the updated application', () => {
+      const rejected = { id: 'app-007', status: 'REJECTED' } as MerchantApplication;
+      let received: unknown;
+      service.submitDecision('app-007', decision).subscribe((res) => (received = res));
+
+      const req = httpMock.expectOne('/api/applications/app-007/decision');
+      expect(req.request.method).toBe('POST');
+      expect(req.request.body).toEqual(decision);
+      req.flush(rejected);
+
+      expect(received).toEqual(rejected);
+    });
+
+    it('passes a 422 with its field errors to the caller', () => {
+      const body: ValidationErrorResponse = {
+        message: 'Some fields are invalid',
+        errors: [{ field: 'notes', message: 'Explain the rejection in at least 20 characters.' }],
+      };
+      let error: HttpErrorResponse | undefined;
+      service.submitDecision('app-007', decision).subscribe({ error: (e) => (error = e) });
+
+      httpMock
+        .expectOne('/api/applications/app-007/decision')
+        .flush(body, { status: 422, statusText: 'Unprocessable Entity' });
+
+      expect(error?.status).toBe(422);
+      expect(error?.error).toEqual(body);
+    });
+  });
+
+  describe('assignReviewer', () => {
+    it('PUTs { reviewerId } to /api/applications/:id/assign and emits the updated application', () => {
+      const assigned = {
+        id: 'app-007',
+        assignedReviewerId: 'u-reviewer-2',
+      } as MerchantApplication;
+      let received: unknown;
+      service.assignReviewer('app-007', 'u-reviewer-2').subscribe((res) => (received = res));
+
+      const req = httpMock.expectOne('/api/applications/app-007/assign');
+      expect(req.request.method).toBe('PUT');
+      expect(req.request.body).toEqual({ reviewerId: 'u-reviewer-2' });
+      req.flush(assigned);
+
+      expect(received).toEqual(assigned);
+    });
+
+    it('URL-encodes the id', () => {
+      service.assignReviewer('a?b', 'u-reviewer-1').subscribe();
+
+      const req = httpMock.expectOne('/api/applications/a%3Fb/assign');
+      expect(req.request.method).toBe('PUT');
+      req.flush({});
+    });
+  });
+
+  describe('getReviewers', () => {
+    it('GETs /api/users?role=REVIEWER and emits the reviewers', () => {
+      const reviewers: UserSummary[] = [
+        { id: 'u-reviewer-1', name: 'Riley Reviewer' },
+        { id: 'u-reviewer-2', name: 'Robin Reviewer' },
+      ];
+      let received: unknown;
+      service.getReviewers().subscribe((res) => (received = res));
+
+      const req = httpMock.expectOne((r) => r.url === '/api/users');
+      expect(req.request.method).toBe('GET');
+      expect(req.request.params.get('role')).toBe('REVIEWER');
+      expect(req.request.urlWithParams).toBe('/api/users?role=REVIEWER');
+      req.flush(reviewers);
+
+      expect(received).toEqual(reviewers);
     });
   });
 });

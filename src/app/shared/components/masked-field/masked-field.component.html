@@ -1,1 +1,47 @@
-<p>masked-field works!</p>
+@if (maskedValue()) {
+  <span class="d-inline-flex flex-wrap align-items-center gap-2">
+    <!-- Announces the switch between masked and revealed (and errors) to screen readers -->
+    <span aria-live="polite">
+      @if (revealedValue(); as value) {
+        <span class="font-monospace">{{ value }}</span>
+        <span class="visually-hidden">(revealed, hides again automatically)</span>
+      } @else {
+        <span aria-hidden="true">{{ maskedValue() }}</span>
+        <span class="visually-hidden">{{ maskedDescription() }}</span>
+      }
+      @if (error(); as message) {
+        <span class="d-block small text-danger">{{ message }}</span>
+      }
+    </span>
+
+    @if (canReveal()) {
+      @if (revealedValue()) {
+        <button
+          type="button"
+          class="btn btn-link btn-sm p-0"
+          [attr.aria-label]="hideLabel()"
+          (click)="hide()"
+        >
+          Hide
+        </button>
+      } @else {
+        <button
+          type="button"
+          class="btn btn-link btn-sm p-0"
+          [attr.aria-label]="revealLabel()"
+          [disabled]="loading()"
+          (click)="reveal()"
+        >
+          @if (loading()) {
+            <span class="spinner-border spinner-border-sm me-1" aria-hidden="true"></span>
+            Revealing…
+          } @else {
+            Reveal
+          }
+        </button>
+      }
+    }
+  </span>
+} @else {
+  Not provided
+}

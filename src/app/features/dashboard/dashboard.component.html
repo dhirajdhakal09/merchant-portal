@@ -70,9 +70,7 @@
             <tr>
               <td class="business-name">{{ app.business.legalName }}</td>
               <td>
-                <span class="badge" [class]="statusMeta[app.status].badge">
-                  {{ statusMeta[app.status].label }}
-                </span>
+                <app-status-badge [status]="app.status" />
               </td>
               <td>
                 @if (app.assignedReviewerName) {

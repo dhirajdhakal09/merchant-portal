@@ -1,0 +1,51 @@
+@if (reviewers.isLoading()) {
+  <p class="text-body-secondary mb-0" aria-live="polite">Loading reviewers…</p>
+} @else if (reviewers.error()) {
+  <div class="d-flex flex-wrap align-items-center gap-2" role="alert">
+    <span class="text-danger">Couldn't load the reviewer list.</span>
+    <button type="button" class="btn btn-sm btn-outline-danger" (click)="reviewers.reload()">
+      Retry
+    </button>
+  </div>
+} @else {
+  <div class="row g-2 align-items-end">
+    <div class="col-12 col-sm">
+      <label for="assign-reviewer" class="form-label">Reviewer</label>
+      <select
+        id="assign-reviewer"
+        #reviewerSelect
+        class="form-select"
+        [value]="selectedId()"
+        [disabled]="saving()"
+        [attr.aria-describedby]="error() ? 'assign-error' : null"
+        (change)="select(reviewerSelect.value)"
+      >
+        <option value="">Select a reviewer</option>
+        @for (reviewer of reviewerList(); track reviewer.id) {
+          <option [value]="reviewer.id">
+            {{ reviewer.name
+            }}{{ reviewer.id === application().assignedReviewerId ? ' (current)' : '' }}
+          </option>
+        }
+      </select>
+    </div>
+    <div class="col-12 col-sm-auto">
+      <button
+        type="button"
+        class="btn btn-primary w-100"
+        [disabled]="!canAssign()"
+        (click)="assign()"
+      >
+        @if (saving()) {
+          <span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>
+          Assigning…
+        } @else {
+          {{ application().assignedReviewerId ? 'Reassign' : 'Assign' }}
+        }
+      </button>
+    </div>
+  </div>
+  @if (error(); as message) {
+    <div id="assign-error" class="text-danger small mt-2" role="alert">{{ message }}</div>
+  }
+}

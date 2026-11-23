@@ -1,0 +1,15 @@
+// Native <dialog>, styled to match Bootstrap's modal look.
+.confirm-dialog {
+  width: min(32rem, calc(100vw - 2rem));
+  padding: 1.5rem;
+  border: 0;
+  border-radius: var(--bs-border-radius-lg);
+  box-shadow: var(--bs-box-shadow-lg);
+  color: var(--bs-body-color);
+  background: var(--bs-body-bg);
+
+  // The dimmed page behind a modal opened with showModal().
+  &::backdrop {
+    background: rgb(0 0 0 / 50%);
+  }
+}

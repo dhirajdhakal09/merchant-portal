@@ -1,0 +1,153 @@
+@let c = form.controls;
+@switch (application().status) {
+  @case ('SUBMITTED') {
+    <p class="mb-3">This application is assigned to you and waiting for review.</p>
+    <button type="button" class="btn btn-primary" [disabled]="busy()" (click)="startReview()">
+      @if (busy()) {
+        <span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>
+        Starting…
+      } @else {
+        Start review
+      }
+    </button>
+  }
+
+  @case ('IN_REVIEW') {
+    <form [formGroup]="form" (ngSubmit)="requestConfirmation()" novalidate>
+      <fieldset class="mb-3">
+        <legend class="form-label fs-6 mb-1">Decision</legend>
+        @for (option of decisionOptions; track option) {
+          <div class="form-check form-check-inline">
+            <input
+              class="form-check-input"
+              type="radio"
+              formControlName="decision"
+              [id]="'decision-' + option"
+              [value]="option"
+              [class.is-invalid]="showError(c.decision)"
+              [attr.aria-invalid]="showError(c.decision) || null"
+              [attr.aria-describedby]="showError(c.decision) ? 'decision-error' : null"
+            />
+            <label class="form-check-label" [for]="'decision-' + option">
+              {{ decisionLabels[option] }}
+            </label>
+          </div>
+        }
+        @if (showError(c.decision)) {
+          <div id="decision-error" class="invalid-feedback d-block">
+            {{ c.decision.errors?.['server'] ?? 'Choose Approve or Reject.' }}
+          </div>
+        }
+      </fieldset>
+
+      <div class="mb-3">
+        <label for="riskLevel" class="form-label">Risk level</label>
+        <select
+          id="riskLevel"
+          class="form-select"
+          formControlName="riskLevel"
+          [class.is-invalid]="showError(c.riskLevel)"
+          [attr.aria-invalid]="showError(c.riskLevel) || null"
+          [attr.aria-describedby]="showError(c.riskLevel) ? 'riskLevel-error' : null"
+        >
+          <option value="">Select a risk level</option>
+          @for (level of riskOptions; track level) {
+            <option [value]="level">{{ riskLabels[level] }}</option>
+          }
+        </select>
+        @if (showError(c.riskLevel)) {
+          <div id="riskLevel-error" class="invalid-feedback">
+            {{ c.riskLevel.errors?.['server'] ?? 'Choose a risk level.' }}
+          </div>
+        }
+      </div>
+
+      <div class="mb-3">
+        <label for="notes" class="form-label">Notes</label>
+        <textarea
+          id="notes"
+          class="form-control"
+          rows="4"
+          formControlName="notes"
+          [attr.maxlength]="maxNotes"
+          [class.is-invalid]="notesInvalid()"
+          [attr.aria-invalid]="notesInvalid() || null"
+          [attr.aria-describedby]="'notes-hint' + (notesInvalid() ? ' notes-error' : '')"
+        ></textarea>
+        <div id="notes-hint" class="form-text">
+          Required. At least {{ minRejectionNotes }} characters when rejecting.
+        </div>
+        @if (showError(c.notes)) {
+          <div id="notes-error" class="invalid-feedback d-block">
+            {{ fieldError(c.notes, 'Notes') }}
+          </div>
+        } @else if (showNotesTooShort()) {
+          <div id="notes-error" class="invalid-feedback d-block">
+            Explain the rejection in at least {{ minRejectionNotes }} characters.
+          </div>
+        }
+      </div>
+
+      <button type="submit" class="btn btn-primary" [disabled]="busy()">
+        Review and submit decision
+      </button>
+    </form>
+  }
+}
+
+@if (message(); as text) {
+  <div class="alert alert-danger py-2 mt-3 mb-0" role="alert">{{ text }}</div>
+}
+
+<!-- Confirmation: nothing is sent until the reviewer confirms here -->
+<dialog
+  #confirmDialog
+  class="confirm-dialog"
+  aria-labelledby="confirm-title"
+  (close)="onDialogClosed()"
+>
+  @if (pending(); as p) {
+    <h2 id="confirm-title" class="h5 mb-3">Confirm your decision</h2>
+    <dl class="row mb-3">
+      <dt class="col-4">Decision</dt>
+      <dd class="col-8">
+        <strong
+          [class.text-success]="p.decision === 'APPROVED'"
+          [class.text-danger]="p.decision === 'REJECTED'"
+        >
+          {{ decisionLabels[p.decision] }}
+        </strong>
+      </dd>
+      <dt class="col-4">Risk level</dt>
+      <dd class="col-8">{{ riskLabels[p.riskLevel] }}</dd>
+      <dt class="col-4">Notes</dt>
+      <dd class="col-8 text-break mb-0">{{ p.notes }}</dd>
+    </dl>
+    <p class="small text-body-secondary">This can't be changed after you confirm.</p>
+    <div class="d-flex flex-column-reverse flex-sm-row justify-content-end gap-2">
+      <button
+        type="button"
+        class="btn btn-outline-secondary"
+        [disabled]="busy()"
+        (click)="cancelConfirmation()"
+      >
+        Cancel
+      </button>
+      <button
+        type="button"
+        class="btn"
+        [class.btn-success]="p.decision === 'APPROVED'"
+        [class.btn-danger]="p.decision === 'REJECTED'"
+        [disabled]="busy()"
+        (click)="confirmDecision()"
+      >
+        @if (busy()) {
+          <span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>
+          Submitting…
+        } @else {
+          Confirm {{ decisionLabels[p.decision] | lowercase }}
+        }
+      </button>
+    </div>
+  }
+</dialog>

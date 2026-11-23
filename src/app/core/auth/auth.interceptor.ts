@@ -3,11 +3,19 @@ import { inject } from '@angular/core';
 import { catchError, throwError, switchMap } from 'rxjs';
 import { AuthService } from './auth.service';
 
+/** Only requests to our own API get the bearer token. */
+const API_PREFIX = '/api/';
+/** Auth endpoints that must never carry a token or trigger a refresh themselves. */
+const AUTH_ENDPOINTS = ['/api/auth/login', '/api/auth/refresh'];
+
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const auth = inject(AuthService);
 
-  // Login and refresh calls must never trigger a refresh themselves
-  if (req.url.includes('/api/auth/login') || req.url.includes('/api/auth/refresh')) {
+  // Never send the token to other origins (CDNs, analytics, third-party APIs): it would leak
+  // the user's credentials. Login and refresh must not trigger a refresh themselves.
+  const isApiRequest = req.url.startsWith(API_PREFIX);
+  const isAuthEndpoint = AUTH_ENDPOINTS.some((url) => req.url.startsWith(url));
+  if (!isApiRequest || isAuthEndpoint) {
     return next(req);
   }
 
