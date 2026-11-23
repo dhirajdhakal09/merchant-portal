@@ -19,21 +19,21 @@ const STATUS_META: Record<ApplicationStatus, { label: string; badge: string }> =
   SUBMITTED: { label: 'Submitted', badge: 'text-bg-info' },
   IN_REVIEW: { label: 'In review', badge: 'text-bg-warning' },
   APPROVED: { label: 'Approved', badge: 'text-bg-success' },
-  REJECTED: { label: 'Rejected', badge: 'text-bg-danger' },
+  REJECTED: { label: 'Rejected', badge: 'text-bg-danger' }
 };
 
 @Component({
-  imports: [ReactiveFormsModule, RouterLink, DatePipe, HasRoleDirective, LoadStateComponent],
+  imports: [ ReactiveFormsModule, RouterLink, DatePipe, HasRoleDirective, LoadStateComponent ],
   selector: 'app-dashboard',
   styleUrl: './dashboard.component.scss',
-  templateUrl: './dashboard.component.html',
+  templateUrl: './dashboard.component.html'
 })
 export default class DashboardComponent {
   private readonly api = inject(ApplicationApiService);
 
   protected readonly statusMeta = STATUS_META;
   protected readonly statuses = Object.keys(STATUS_META) as ApplicationStatus[];
-  protected readonly pageSizes = [10, 20, 50] as const;
+  protected readonly pageSizes = [ 10, 20, 50 ] as const;
 
   /** Single source of truth for what the table shows. Every change triggers a new request. */
   protected readonly query = signal<ApplicationQuery>(DEFAULT_QUERY);
@@ -45,15 +45,13 @@ export default class DashboardComponent {
    */
   private readonly applications = rxResource({
     params: () => this.query(),
-    stream: ({ params }) => this.api.getApplications(params),
+    stream: ({ params }) => this.api.getApplications(params)
   });
 
   protected readonly loading = this.applications.isLoading;
   protected readonly error = this.applications.error;
   /** Guarded with hasValue(): reading value() while the resource is in an error state throws. */
-  protected readonly data = computed(() =>
-    this.applications.hasValue() ? this.applications.value() : undefined,
-  );
+  protected readonly data = computed(() => (this.applications.hasValue() ? this.applications.value() : undefined));
 
   protected readonly currentPage = computed(() => this.data()?.page ?? this.query().page);
 
@@ -73,8 +71,8 @@ export default class DashboardComponent {
   /** e.g. "Showing 11–20 of 45". Based on the response, so it matches what's on screen. */
   protected readonly rangeLabel = computed(() => {
     const res = this.data();
-    if (!res) return '';
-    if (res.total === 0) return 'Showing 0 of 0';
+    if (!res) {return '';}
+    if (res.total === 0) {return 'Showing 0 of 0';}
     const first = (res.page - 1) * res.pageSize + 1;
     const last = Math.min(res.page * res.pageSize, res.total);
     return `Showing ${first}–${last} of ${res.total}`;
@@ -83,55 +81,41 @@ export default class DashboardComponent {
   /** Different wording when nothing is filtered, so an empty account isn't told to change filters. */
   protected readonly emptyMessage = computed(() => {
     const { status, search } = this.query();
-    return status || search
-      ? 'No applications match your filters.'
-      : 'There are no applications to show yet.';
+    return status || search ? 'No applications match your filters.' : 'There are no applications to show yet.';
   });
 
   protected readonly searchControl = new FormControl('', { nonNullable: true });
 
   constructor() {
-    /*
-     * Why debounce the search with RxJS:
-     * Without it, typing "coffee" fires 6 requests (c, co, cof, ...), and responses could
-     * even arrive out of order. debounceTime(300) waits until the user pauses for 300ms,
-     * so only the final term is sent. map(trim) + distinctUntilChanged() then skip requests
-     * that wouldn't change anything (e.g. adding a trailing space, or retyping the same word).
-     * valueChanges is already an Observable, and these timing operators are exactly what
-     * RxJS is built for; signals have no built-in way to debounce.
-     *
-     * takeUntilDestroyed() unsubscribes when the component is destroyed, so the subscription
-     * can't leak or update a component that no longer exists.
-     */
     this.searchControl.valueChanges
       .pipe(
         debounceTime(300),
-        map((value) => value.trim()),
+        map(value => value.trim()),
         distinctUntilChanged(),
-        takeUntilDestroyed(),
+        takeUntilDestroyed()
       )
-      .subscribe((search) => this.updateFilters({ search: search || undefined }));
+      .subscribe(search => this.updateFilters({ search: search || undefined }));
   }
 
   /** Takes the raw <select> value; anything that isn't a known status (e.g. "All") clears it. */
   protected setStatus(value: string): void {
-    const status = this.statuses.find((s) => s === value);
+    const status = this.statuses.find(s => s === value);
     this.updateFilters({ status });
   }
 
   protected goToPage(page: number): void {
     const target = Math.min(Math.max(1, page), this.totalPages());
     if (target !== this.query().page) {
-      this.query.update((q) => ({ ...q, page: target }));
+      this.query.update(q => ({ ...q, page: target }));
     }
   }
 
   /** Takes the raw <select> value; ignores anything that isn't one of the offered sizes. */
   protected changePageSize(value: string | number): void {
-    const pageSize = this.pageSizes.find((size) => size === Number(value));
-    if (!pageSize) return;
+    const pageSize = this.pageSizes.find(size => size === Number(value));
+    if (!pageSize) {return;}
     // A different page size changes which records each page holds, so start again at page 1.
-    this.query.update((q) => ({ ...q, pageSize, page: 1 }));
+    this.query.update(q => ({ ...q, pageSize, page: 1 }));
   }
 
   /** Re-runs the current request, e.g. from the error state's Retry button. */
@@ -146,6 +130,6 @@ export default class DashboardComponent {
    * matches exist. Page 1 of the new results is the only page guaranteed to make sense.
    */
   private updateFilters(changes: Pick<ApplicationQuery, 'status' | 'search'>): void {
-    this.query.update((q) => ({ ...q, ...changes, page: 1 }));
+    this.query.update(q => ({ ...q, ...changes, page: 1 }));
   }
 }

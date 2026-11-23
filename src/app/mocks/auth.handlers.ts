@@ -2,20 +2,11 @@ import { delay, http, HttpResponse } from 'msw';
 import type { AuthResponse, RefreshResponse } from '../core/models/user.model';
 import { createAccessToken, createRefreshToken, verifyToken } from './auth-tokens';
 import { db, toPublicUser } from './data';
+import { readJson } from './http-utils';
 import { requireAuth } from './require-auth';
 
 /** Artificial latency so loading states are visible in the UI. */
 const LATENCY_MS = 300;
-
-/** Reads a JSON body without throwing; returns null if the body isn't valid JSON. */
-async function readJson(request: Request): Promise<Record<string, unknown> | null> {
-  try {
-    const body: unknown = await request.json();
-    return body && typeof body === 'object' ? (body as Record<string, unknown>) : null;
-  } catch {
-    return null;
-  }
-}
 
 export const authHandlers = [
   http.post('/api/auth/login', async ({ request }) => {

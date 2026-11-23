@@ -59,6 +59,28 @@ export interface MerchantApplication {
   updatedAt: string;
 }
 
+/**
+ * Body for creating or saving a draft. Every section and field is optional, because a
+ * draft can be saved at any point while the form is still incomplete.
+ */
+export interface ApplicationDraftPayload {
+  business?: Partial<BusinessInfo>;
+  owner?: Partial<OwnerInfo>;
+  bank?: Partial<BankDetails>;
+}
+
+/** One server-side validation problem. `field` uses dot paths matching the form, e.g. "owner.email". */
+export interface FieldError {
+  field: string;
+  message: string;
+}
+
+/** Body of a 422 Unprocessable Entity response from submit. */
+export interface ValidationErrorResponse {
+  message: string;
+  errors: FieldError[];
+}
+
 /** Generic envelope for server-side paginated lists. */
 export interface PaginatedResponse<T> {
   items: T[];

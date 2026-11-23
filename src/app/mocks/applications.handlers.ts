@@ -3,9 +3,13 @@ import type {
   ApplicationStatus,
   MerchantApplication,
   PaginatedResponse,
+  ValidationErrorResponse,
 } from '../core/models/application.model';
+import { validateApplication } from '../shared/validators/merchant-rules';
 import { canViewApplication } from './application-access';
+import { emptyDetails, mergeDraft, nextApplicationId } from './application-drafts';
 import { db } from './data';
+import { readJson } from './http-utils';
 import { requireAuth } from './require-auth';
 
 /** Artificial latency so loading states are visible in the UI. */
@@ -24,6 +28,33 @@ const STATUSES: readonly ApplicationStatus[] = [
 function positiveInt(value: string | null, fallback: number, max = Number.MAX_SAFE_INTEGER) {
   const n = Number(value);
   return Number.isInteger(n) && n >= 1 ? Math.min(n, max) : fallback;
+}
+
+const errorResponse = (status: number, message: string) =>
+  HttpResponse.json({ message }, { status });
+
+/**
+ * Shared checks for changing a draft (save and submit), in order:
+ * 401/403 not a signed-in SALES user → 404 no such application →
+ * 403 not the creator → 409 no longer a draft.
+ * Returns the application, or the error response to send.
+ */
+function findOwnDraft(request: Request, id: unknown): MerchantApplication | Response {
+  const auth = requireAuth(request, ['SALES']);
+  if (auth instanceof Response) return auth;
+
+  const app = db.applications.find((a) => a.id === id);
+  if (!app) {
+    return errorResponse(404, 'Application not found');
+  }
+  if (app.createdById !== auth.id) {
+    return errorResponse(403, 'Only the creator can change this application');
+  }
+  if (app.status !== 'DRAFT') {
+    // 409 Conflict: the request is valid, but the application's current state forbids it.
+    return errorResponse(409, `Application is ${app.status} and can no longer be edited`);
+  }
+  return app;
 }
 
 export const applicationHandlers = [
@@ -89,6 +120,63 @@ export const applicationHandlers = [
       );
     }
 
+    return HttpResponse.json<MerchantApplication>(app);
+  }),
+
+  /** Create a new draft. SALES only; fields may be empty or missing. */
+  http.post('/api/applications', async ({ request }) => {
+    await delay(LATENCY_MS);
+    const auth = requireAuth(request, ['SALES']);
+    if (auth instanceof Response) return auth;
+
+    const now = new Date().toISOString();
+    const app: MerchantApplication = {
+      id: nextApplicationId(),
+      status: 'DRAFT', // always DRAFT, whatever the body says
+      ...mergeDraft(emptyDetails(), await readJson(request)),
+      createdById: auth.id, // from the verified token, never from the body
+      riskHistory: [],
+      createdAt: now,
+      updatedAt: now,
+    };
+    db.applications.push(app);
+
+    return HttpResponse.json<MerchantApplication>(app, { status: 201 });
+  }),
+
+  /** Save partial draft data (auto-save). Creator only, DRAFT only. */
+  http.put('/api/applications/:id/draft', async ({ request, params }) => {
+    await delay(LATENCY_MS);
+    const app = findOwnDraft(request, params['id']);
+    if (app instanceof Response) return app;
+
+    const merged = mergeDraft(app, await readJson(request));
+
+    // Demo hook: lets the UI's auto-save error handling be shown on demand. Nothing is saved.
+    if (merged.business.legalName.toLowerCase().includes('savefail')) {
+      return errorResponse(500, 'Simulated save failure');
+    }
+
+    Object.assign(app, merged, { updatedAt: new Date().toISOString() });
+    return HttpResponse.json<MerchantApplication>(app);
+  }),
+
+  /** Submit a draft for review. Creator only, DRAFT only, and the saved data must be valid. */
+  http.post('/api/applications/:id/submit', async ({ request, params }) => {
+    await delay(LATENCY_MS);
+    const app = findOwnDraft(request, params['id']);
+    if (app instanceof Response) return app;
+
+    // Validate what is actually stored on the server, not what the client claims.
+    const errors = validateApplication(app);
+    if (errors.length > 0) {
+      return HttpResponse.json<ValidationErrorResponse>(
+        { message: 'Some fields are missing or invalid', errors },
+        { status: 422 },
+      );
+    }
+
+    Object.assign(app, { status: 'SUBMITTED', updatedAt: new Date().toISOString() });
     return HttpResponse.json<MerchantApplication>(app);
   }),
 ];
